@@ -46,6 +46,15 @@
   --cream-dim-rgb:233,216,222;
   --muted-rgb:181,143,160;
 
+  /* Layered elevation: every "resting" shadow pairs a tight contact shadow
+     with a soft ambient one, so cards read as sitting on the surface
+     rather than pasted on top of it. --spring is the shared overshoot
+     easing for presses/hovers — a touch of bounce reads as "considered",
+     not "default ease". */
+  --shadow-resting: 0 1px 2px rgba(0,0,0,0.3), 0 10px 24px -8px rgba(0,0,0,0.35);
+  --shadow-lifted: 0 2px 4px rgba(0,0,0,0.35), 0 20px 40px -12px rgba(0,0,0,0.5);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
   transition: background 0.3s ease;
 }
 
@@ -68,7 +77,7 @@ body{
   font-family:'Work Sans', sans-serif;
   color:var(--cream);
   min-height:100vh;
-  padding:40px 16px 70px;
+  padding:0 16px calc(96px + env(safe-area-inset-bottom));
   position:relative;
 }
 
@@ -85,6 +94,39 @@ body::before{
   mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
+/* Signature ambient element: a slow, barely-perceptible drift of warm light
+   behind everything, like light moving across a room over the course of an
+   evening. It's the one indulgent motion on the page — everything else
+   stays still — so it earns its keep instead of competing for attention. */
+body::after{
+  content:"";
+  position:fixed;
+  inset:-10%;
+  z-index:0;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(var(--gold-rgb), 0.13) 0%, transparent 38%),
+    radial-gradient(circle at 80% 75%, rgba(var(--terracotta-rgb), 0.12) 0%, transparent 40%);
+  animation:driftGlow 26s ease-in-out infinite;
+  filter:blur(30px);
+}
+@keyframes driftGlow{
+  0%,100%{ transform:translate(0,0) scale(1); }
+  33%{ transform:translate(3%, -2%) scale(1.06); }
+  66%{ transform:translate(-2%, 3%) scale(0.97); }
+}
+@media (prefers-reduced-motion: reduce){
+  body::after{ animation:none; }
+}
+
+/* Consistent, visible keyboard focus everywhere — premium doesn't mean
+   invisible focus rings. */
+:focus-visible{
+  outline:2px solid var(--gold);
+  outline-offset:2px;
+  border-radius:4px;
+}
+
 .wrap{position:relative; z-index:1;}
 
 /* Shared press feedback — a real button, wherever it lives, should feel
@@ -93,6 +135,7 @@ body::before{
 .day-btn,
 .util-btn,
 .add-slot,
+.fab-add,
 .template-chip,
 .reset-btn,
 .edit-actions button,
@@ -100,12 +143,13 @@ body::before{
 .install-btn,
 .modal-ok,
 .week-card{
-  transition:transform 0.12s ease, all 0.2s ease;
+  transition:transform 0.28s var(--spring), box-shadow 0.28s var(--spring), border-color 0.2s ease, background 0.2s ease;
 }
 .view-toggle button:active,
 .day-btn:active,
 .util-btn:active,
 .add-slot:active,
+.fab-add:active,
 .template-chip:active,
 .reset-btn:active,
 .edit-actions button:active,
@@ -115,43 +159,32 @@ body::before{
   transform:scale(0.96);
 }
 
-.wrap{max-width:840px;margin:0 auto;}
+.wrap{max-width:840px;margin:0 auto; padding-bottom:24px;}
 
-header{text-align:center;margin-bottom:22px;}
-
-.eyebrow{
-  font-size:11px;
-  letter-spacing:4px;
-  text-transform:uppercase;
-  color:var(--gold);
-  font-weight:600;
-  margin-bottom:10px;
+/* Slim persistent top bar — replaces the old full hero block. Sticky so
+   it's always available as an orientation anchor, but small enough that
+   it never competes with the day's actual content for space. */
+.top-bar{
+  position:sticky;
+  top:0;
+  z-index:5;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px 4px;
+  margin:0 -16px 18px;
+  background:rgba(var(--ink-rgb), 0.85);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(var(--gold-rgb), 0.16);
+  box-shadow:0 12px 24px -12px rgba(0,0,0,0.4);
 }
-
-h1{
+.top-bar-title{
   font-family:'Fraunces', serif;
-  font-weight:700;
-  font-size:clamp(34px,7vw,52px);
-  background:linear-gradient(180deg, var(--cream) 20%, var(--gold-soft) 100%);
-  -webkit-background-clip:text;
-  background-clip:text;
-  color:transparent;
-  line-height:1.05;
-}
-
-.subtitle{
-  margin-top:12px;
-  font-size:14.5px;
-  color:var(--muted);
-  max-width:460px;
-  margin-left:auto;
-  margin-right:auto;
-}
-
-.gold-rule{
-  width:64px;height:2px;
-  margin:20px auto;
-  background:linear-gradient(90deg, transparent, var(--gold), transparent);
+  font-weight:600;
+  font-size:19px;
+  color:var(--cream);
+  letter-spacing:-0.01em;
 }
 
 /* Stats bar */
@@ -169,12 +202,15 @@ h1{
   padding:10px 18px;
   text-align:center;
   min-width:120px;
+  box-shadow:var(--shadow-resting);
 }
 .stat-num{
   font-family:'Fraunces', serif;
   font-size:22px;
   font-weight:700;
   color:var(--gold-soft);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-0.01em;
 }
 .stat-label{
   font-size:10.5px;
@@ -199,7 +235,8 @@ h1{
   width:46px;height:46px;
   border-radius:50%;
   flex-shrink:0;
-  background:conic-gradient(var(--terracotta) calc(var(--pct,0) * 1%), rgba(255,255,255,0.09) 0);
+  background:conic-gradient(from -90deg, var(--gold) 0%, var(--terracotta) calc(var(--pct,0) * 1%), rgba(255,255,255,0.09) 0);
+  box-shadow:0 2px 8px rgba(var(--terracotta-rgb), 0.25);
   transition:background 0.5s ease;
 }
 .ring::before{
@@ -218,6 +255,7 @@ h1{
   font-size:11px;
   font-weight:700;
   color:var(--gold-soft);
+  font-variant-numeric:tabular-nums;
 }
 
 /* Theme switcher */
@@ -236,12 +274,9 @@ h1{
   color:var(--muted);
   margin-right:2px;
 }
-.theme-current{
-  font-size:12.5px;
-  font-weight:600;
-  color:var(--gold-soft);
-  margin-right:6px;
-  min-width:64px;
+.theme-select{
+  min-width:132px;
+  text-align:left;
 }
 .theme-swatch{
   width:32px;height:32px;
@@ -267,6 +302,7 @@ h1{
   align-items:center;
   justify-content:center;
   position:relative;
+  background:conic-gradient(from 90deg, #FF6FA5, #FFD166, #8FBE6E, #6FA3A3, #9C8CE0, #FF6FA5);
 }
 .custom-swatch input[type="color"]{
   appearance:none;
@@ -284,30 +320,48 @@ h1{
 .custom-swatch input[type="color"]::-moz-color-swatch{border:none; border-radius:50%;}
 
 /* View toggle */
+/* Bottom tab bar — the app's primary navigation. Fixed, persistent,
+   thumb-reachable; Today/Week/Insights/Settings each get equal real
+   estate instead of living as buttons scattered through a long scroll. */
 .view-toggle{
+  position:fixed;
+  left:0; right:0; bottom:0;
+  z-index:20;
   display:flex;
-  justify-content:center;
-  gap:6px;
-  margin-bottom:22px;
+  justify-content:space-around;
+  align-items:stretch;
+  gap:2px;
+  background:rgba(var(--plum-rgb), 0.92);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-top:1px solid rgba(var(--gold-rgb), 0.18);
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  box-shadow:0 -8px 24px rgba(0,0,0,0.25);
 }
 .view-toggle button{
-  padding:9px 20px;
-  border-radius:999px;
-  border:1px solid rgba(var(--gold-rgb), 0.3);
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  padding:6px 4px;
+  border-radius:12px;
+  border:none;
   background:none;
-  color:var(--cream-dim);
+  color:var(--muted);
   font-family:'Work Sans', sans-serif;
   font-weight:600;
-  font-size:13px;
+  font-size:10.5px;
   cursor:pointer;
   transition:all 0.2s ease;
 }
+.view-toggle button .tab-icon{font-size:19px; line-height:1;}
 .view-toggle button.active{
-  background:var(--gold);
-  color:var(--ink);
-  border-color:var(--gold);
+  color:var(--gold-soft);
+  background:rgba(var(--gold-rgb), 0.12);
 }
-.view-toggle button:hover:not(.active){border-color:var(--gold);}
+.view-toggle button:hover:not(.active){color:var(--cream-dim);}
 
 /* Next up banner */
 .next-up{
@@ -469,11 +523,7 @@ h1{
 }
 
 .day-head{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:12px;
-  margin-bottom:6px;
+  margin-bottom:12px;
 }
 
 .day-title{
@@ -483,18 +533,33 @@ h1{
   color:var(--cream);
 }
 
-.reset-btn{
+/* Day-level actions (duplicate / reset) live on their own compact row
+   below the title instead of squeezing in beside it, so the title never
+   has to compete with two buttons for width on a narrow screen. */
+.day-actions{
+  display:flex;
+  gap:8px;
+  margin-bottom:18px;
+}
+.day-action-btn{
+  flex:1;
+  min-width:0;
   background:none;
   border:1px solid rgba(255,255,255,0.15);
   color:var(--muted);
-  font-size:11px;
-  padding:6px 12px;
-  border-radius:999px;
+  font-family:'Work Sans', sans-serif;
+  font-size:11.5px;
+  font-weight:500;
+  padding:8px 10px;
+  border-radius:10px;
   cursor:pointer;
+  text-align:center;
+  text-overflow:ellipsis;
+  overflow:hidden;
   white-space:nowrap;
   transition:all 0.2s ease;
 }
-.reset-btn:hover{border-color:var(--gold); color:var(--gold);}
+.day-action-btn:hover{border-color:var(--gold); color:var(--gold);}
 
 .day-note{
   font-size:13.5px;
@@ -645,6 +710,7 @@ h1{
   text-transform:uppercase;
   color:var(--gold);
   font-weight:600;
+  font-variant-numeric:tabular-nums;
 }
 .slot-label{
   font-size:16.5px;
@@ -732,21 +798,37 @@ h1{
 .btn-cancel:hover{background:rgba(255,255,255,0.14);}
 .btn-delete:hover{text-decoration:underline;}
 
-.add-slot{
-  width:100%;
-  margin-top:14px;
-  padding:13px;
-  border-radius:12px;
-  border:1px dashed rgba(var(--gold-rgb), 0.4);
-  background:none;
-  color:var(--gold);
-  font-family:'Work Sans', sans-serif;
+/* Floating action button — the app's one primary "create" action, always
+   reachable with a thumb, sitting above the tab bar rather than buried at
+   the bottom of a scrolling task list. */
+.fab-add{
+  position:fixed;
+  right:20px;
+  bottom:calc(78px + env(safe-area-inset-bottom));
+  z-index:19;
+  width:56px;height:56px;
+  border-radius:50%;
+  border:none;
+  background:linear-gradient(160deg, var(--terracotta), var(--gold));
+  color:var(--ink);
+  font-size:28px;
   font-weight:600;
-  font-size:13px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   cursor:pointer;
-  transition:all 0.2s ease;
+  box-shadow:0 10px 26px rgba(var(--terracotta-rgb), 0.45), 0 2px 6px rgba(0,0,0,0.3);
 }
-.add-slot:hover{background:rgba(var(--gold-rgb), 0.08); border-color:var(--gold);}
+.fab-add:hover{filter:brightness(1.08);}
+
+.insights-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:center;
+  margin-top:20px;
+}
 
 /* Quick templates */
 .template-row{
@@ -894,10 +976,10 @@ select.util-btn:disabled{opacity:0.4; cursor:not-allowed;}
   border-radius:18px;
   padding:18px 16px;
   cursor:pointer;
-  transition:transform 0.15s ease, border-color 0.15s ease;
+  box-shadow:var(--shadow-resting);
 }
-.week-card:hover{transform:translateY(-3px); border-color:var(--gold);}
-.week-card.today{border-color:var(--terracotta); box-shadow:0 0 0 1px rgba(var(--terracotta-rgb), 0.3);}
+.week-card:hover{transform:translateY(-4px); border-color:var(--gold); box-shadow:var(--shadow-lifted);}
+.week-card.today{border-color:var(--terracotta); box-shadow:0 0 0 1px rgba(var(--terracotta-rgb), 0.3), var(--shadow-resting);}
 .week-card-head{
   display:flex;
   justify-content:space-between;
@@ -908,11 +990,13 @@ select.util-btn:disabled{opacity:0.4; cursor:not-allowed;}
   font-family:'Fraunces', serif;
   font-size:18px;
   font-weight:600;
+  letter-spacing:-0.01em;
 }
 .week-card-frac{
   font-size:11px;
   color:var(--gold);
   font-weight:600;
+  font-variant-numeric:tabular-nums;
 }
 .week-card-note{
   font-size:11.5px;
@@ -956,7 +1040,7 @@ footer span{color:var(--gold);}
 /* Install to home screen */
 .install-btn{
   display:none;
-  margin:30px auto 0;
+  margin:0;
   padding:13px 22px;
   border-radius:999px;
   border:1px solid rgba(var(--gold-rgb), 0.35);
@@ -972,7 +1056,7 @@ footer span{color:var(--gold);}
 .install-btn:hover{border-color:var(--gold); background:rgba(var(--gold-rgb), 0.08);}
 .install-icon{margin-right:4px;}
 
-.settings-row{display:flex; justify-content:center; margin:22px 0 6px;}
+.settings-row{display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin:22px 0 6px;}
 .settings-btn{
   padding:13px 26px;
   border-radius:999px;
@@ -983,9 +1067,10 @@ footer span{color:var(--gold);}
   font-weight:600;
   font-size:13px;
   cursor:pointer;
-  transition:all 0.2s ease;
+  box-shadow:var(--shadow-resting);
+  transition:transform 0.28s var(--spring), box-shadow 0.28s var(--spring), border-color 0.2s ease, background 0.2s ease;
 }
-.settings-btn:hover{border-color:var(--gold); background:rgba(var(--gold-rgb), 0.08);}
+.settings-btn:hover{border-color:var(--gold); background:rgba(var(--gold-rgb), 0.08); transform:translateY(-2px); box-shadow:var(--shadow-lifted);}
 .settings-btn:active{transform:scale(0.96);}
 
 .settings-section{margin-bottom:22px;}
@@ -1005,6 +1090,12 @@ footer span{color:var(--gold);}
   margin-bottom:8px;
 }
 .settings-row-item:last-child{margin-bottom:0;}
+.settings-hint{
+  font-size:12px;
+  line-height:1.5;
+  color:var(--muted);
+  margin-top:4px;
+}
 
 /* Insight card — the app noticing something real about the pattern in your
    own history, not a permanent fixture. Only ever appears when there's
@@ -1014,17 +1105,115 @@ footer span{color:var(--gold);}
   display:flex;
   gap:12px;
   align-items:flex-start;
-  background:rgba(var(--terracotta-rgb), 0.09);
+  background:linear-gradient(180deg, rgba(var(--terracotta-rgb), 0.11), rgba(var(--terracotta-rgb), 0.06));
   border:1px solid rgba(var(--terracotta-rgb), 0.3);
   border-radius:16px;
   padding:16px 18px;
-  margin-bottom:20px;
+  margin-bottom:14px;
+  box-shadow:0 10px 28px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.05);
   animation:insight-in 0.4s ease;
 }
 @keyframes insight-in{
   from{opacity:0; transform:translateY(-6px);}
   to{opacity:1; transform:translateY(0);}
 }
+/* ---- Weekly review card ----
+   Reuses .card for its shimmer stripe / glow / shadow (the app's one
+   "signature" material) rather than inventing a second decorative language,
+   just laid out as two columns: how the week that's ending went, and what's
+   coming in the week about to start. */
+.review-card{
+  margin-top:0;
+  margin-bottom:14px;
+  padding:22px 22px 18px;
+}
+.review-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:16px;
+}
+.review-eyebrow{
+  font-size:10.5px;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:var(--gold);
+  font-weight:600;
+}
+.review-close{
+  background:none; border:none;
+  color:var(--muted);
+  font-size:20px;
+  line-height:1;
+  cursor:pointer;
+  padding:0 2px;
+}
+.review-close:hover{color:var(--gold);}
+.review-body{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  gap:18px;
+}
+@media (max-width:480px){
+  .review-body{grid-template-columns:1fr; gap:20px;}
+  .review-divider{display:none;}
+}
+.review-divider{
+  width:1px;
+  background:linear-gradient(180deg, transparent, rgba(var(--gold-rgb), 0.35), transparent);
+}
+.review-col-label{
+  font-family:'Fraunces', serif;
+  font-size:15px;
+  font-weight:600;
+  color:var(--cream);
+  margin-bottom:10px;
+}
+.review-stats{
+  display:flex;
+  gap:16px;
+  margin-bottom:10px;
+}
+.review-stat{
+  font-family:'Fraunces', serif;
+  font-size:20px;
+  font-weight:700;
+  color:var(--gold-soft);
+}
+.review-stat .review-stat-label{
+  display:block;
+  font-family:'Work Sans', sans-serif;
+  font-size:9.5px;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  font-weight:600;
+  color:var(--muted);
+  margin-top:2px;
+}
+.review-note{
+  font-size:12.5px;
+  color:var(--cream-dim);
+  line-height:1.5;
+}
+.review-days{list-style:none; padding:0; margin:0;}
+.review-day-row{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  padding:6px 0;
+  font-size:12.5px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.review-day-row:last-child{border-bottom:none;}
+.review-day-name{color:var(--cream-dim); font-weight:600;}
+.review-day-name.heaviest{color:var(--gold-soft);}
+.review-day-count{color:var(--muted); white-space:nowrap;}
+.review-actions{
+  margin-top:16px;
+  display:flex;
+  justify-content:flex-end;
+}
+
 .insight-icon{font-size:20px; line-height:1; flex-shrink:0; margin-top:1px;}
 .insight-body{flex:1; min-width:0;}
 .insight-text{font-size:13.5px; color:var(--cream-dim); line-height:1.5;}
@@ -1042,6 +1231,8 @@ footer span{color:var(--gold);}
 .insight-actions button:active{transform:scale(0.95);}
 .insight-btn-primary{background:var(--terracotta); color:#fff;}
 .insight-btn-primary:hover{background:color-mix(in srgb, var(--terracotta) 85%, black);}
+.insight-btn-secondary{background:transparent; color:var(--terracotta); border:1px solid var(--terracotta) !important;}
+.insight-btn-secondary:hover{background:color-mix(in srgb, var(--terracotta) 12%, transparent);}
 .insight-btn-dismiss{background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.15) !important;}
 .insight-btn-dismiss:hover{color:var(--cream-dim); border-color:rgba(255,255,255,0.3) !important;}
 @media (prefers-reduced-motion: reduce){
@@ -1112,6 +1303,353 @@ footer span{color:var(--gold);}
 }
 .modal-ok:hover{filter:brightness(1.08);}
 
+/* ---- alarm overlay: the "loud" alert, distinct from the quiet reminder
+   Notification. Sits above modals (z-index 200) since it needs to
+   interrupt whatever else is on screen, including the settings panel. */
+.alarm-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(var(--ink-rgb), 0.88);
+  backdrop-filter:blur(4px);
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:200;
+}
+.alarm-overlay.open{display:flex;}
+.alarm-card{
+  background:linear-gradient(180deg, var(--plum-light), var(--plum));
+  border:2px solid var(--gold);
+  border-radius:24px;
+  padding:32px 26px;
+  max-width:360px;
+  width:100%;
+  text-align:center;
+  box-shadow:0 0 0 6px rgba(var(--gold-rgb), 0.15), 0 24px 60px rgba(0,0,0,0.5);
+  animation:alarmPulse 1.1s ease-in-out infinite;
+}
+@keyframes alarmPulse{
+  0%,100%{ transform:scale(1); box-shadow:0 0 0 6px rgba(var(--gold-rgb), 0.15), 0 24px 60px rgba(0,0,0,0.5); }
+  50%{ transform:scale(1.02); box-shadow:0 0 0 12px rgba(var(--gold-rgb), 0.28), 0 24px 60px rgba(0,0,0,0.5); }
+}
+@media (prefers-reduced-motion: reduce){
+  .alarm-card{ animation:none; }
+}
+.alarm-kicker{
+  font-size:12px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--gold);
+  font-weight:600;
+  margin-bottom:10px;
+}
+.alarm-time{
+  font-family:'Fraunces', serif;
+  font-size:28px;
+  font-weight:700;
+  color:var(--cream);
+  margin-bottom:4px;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-0.01em;
+}
+.alarm-label{
+  font-size:19px;
+  font-weight:600;
+  color:var(--cream);
+  margin-bottom:6px;
+}
+.alarm-desc{
+  font-size:13.5px;
+  color:var(--cream-dim);
+  margin-bottom:22px;
+  min-height:1px;
+}
+.alarm-actions{
+  display:flex;
+  gap:10px;
+}
+.alarm-snooze, .alarm-dismiss{
+  flex:1;
+  padding:13px 10px;
+  border-radius:999px;
+  border:none;
+  font-family:'Work Sans', sans-serif;
+  font-weight:600;
+  font-size:13.5px;
+  cursor:pointer;
+}
+.alarm-snooze{
+  background:transparent;
+  color:var(--cream);
+  border:1px solid rgba(var(--gold-rgb), 0.4);
+}
+.alarm-snooze:hover{border-color:var(--gold);}
+.alarm-dismiss{
+  background:var(--terracotta);
+  color:#fff;
+}
+.alarm-dismiss:hover{filter:brightness(1.08);}
+.alarm-snooze:active, .alarm-dismiss:active{transform:scale(0.96);}
+
+/* ---- moon-phase day glyphs ----
+   A genuine callback to "Weekly Rhythm": each day of the week gets a fixed
+   moon phase (new moon early week, full moon midweek, waning toward
+   Sunday) instead of an arbitrary icon. Built from two overlapping circles
+   rather than an image/font glyph, so it re-colors with the theme for free. */
+.moon-icon{
+  position:relative;
+  width:16px; height:16px;
+  border-radius:50%;
+  background:var(--gold-soft);
+  overflow:hidden;
+  flex-shrink:0;
+  box-shadow:0 0 6px rgba(var(--gold-rgb), 0.4);
+}
+.moon-icon .moon-shadow{
+  position:absolute;
+  top:-10%; width:120%; height:120%;
+  border-radius:50%;
+  background:var(--plum);
+}
+.moon-icon.phase-waxing-crescent .moon-shadow{ left:-65%; }
+.moon-icon.phase-first-quarter .moon-shadow{ left:-10%; }
+.moon-icon.phase-waxing-gibbous .moon-shadow{ left:35%; }
+.moon-icon.phase-full .moon-shadow{ left:130%; }
+.moon-icon.phase-waning-gibbous .moon-shadow{ left:35%; transform:scaleX(-1); }
+.moon-icon.phase-last-quarter .moon-shadow{ left:-10%; transform:scaleX(-1); }
+.moon-icon.phase-waning-crescent .moon-shadow{ left:-65%; transform:scaleX(-1); }
+.day-title-row{display:flex; align-items:center; gap:9px;}
+.week-card-day-row{display:flex; align-items:center; gap:7px;}
+
+/* ---- empty day state ---- */
+.empty-day{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  padding:36px 20px 28px;
+  color:var(--muted);
+}
+.empty-day svg{ opacity:0.7; margin-bottom:14px; }
+.empty-day-title{
+  font-family:'Fraunces', serif;
+  font-style:italic;
+  font-size:16px;
+  color:var(--cream-dim);
+  margin-bottom:4px;
+}
+.empty-day-sub{ font-size:12.5px; max-width:260px; }
+
+/* ---- mood/energy picker (today only) ---- */
+.mood-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin:2px 0 14px;
+}
+.mood-label{
+  font-size:10.5px;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-right:2px;
+}
+.mood-btn{
+  width:34px; height:34px;
+  border-radius:50%;
+  border:1px solid rgba(var(--gold-rgb), 0.25);
+  background:rgba(255,255,255,0.03);
+  cursor:pointer;
+  font-size:15px;
+  display:flex; align-items:center; justify-content:center;
+  transition:transform 0.2s var(--spring), border-color 0.2s ease, background 0.2s ease;
+}
+.mood-btn:hover{ border-color:var(--gold); transform:translateY(-1px); }
+.mood-btn.active{
+  background:linear-gradient(135deg, var(--terracotta), var(--gold));
+  border-color:transparent;
+  box-shadow:0 4px 12px rgba(var(--terracotta-rgb), 0.4);
+  transform:scale(1.08);
+}
+
+/* ---- streak flame: gentle flicker once there's something to celebrate ---- */
+.flame-lit{ display:inline-block; animation:flameFlicker 1.6s ease-in-out infinite; }
+@keyframes flameFlicker{
+  0%,100%{ transform:scale(1) rotate(0deg); }
+  25%{ transform:scale(1.08) rotate(-3deg); }
+  50%{ transform:scale(0.96) rotate(2deg); }
+  75%{ transform:scale(1.05) rotate(-1deg); }
+}
+
+/* ---- search overlay ---- */
+.search-input{
+  width:100%;
+  padding:12px 14px;
+  border-radius:12px;
+  border:1px solid rgba(var(--gold-rgb), 0.3);
+  background:rgba(255,255,255,0.04);
+  color:var(--cream);
+  font-family:'Work Sans', sans-serif;
+  font-size:14px;
+  margin-bottom:14px;
+}
+.search-input:focus{ border-color:var(--gold); outline:none; }
+.search-result{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:11px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  margin-bottom:6px;
+  background:rgba(255,255,255,0.03);
+  transition:background 0.15s ease;
+}
+.search-result:hover{ background:rgba(var(--gold-rgb), 0.1); }
+.search-result-label{ font-weight:600; font-size:13.5px; }
+.search-result-day{ font-size:11px; color:var(--gold); text-transform:uppercase; letter-spacing:0.5px; }
+.search-empty{ color:var(--muted); font-size:13px; text-align:center; padding:20px 0; }
+.icon-btn{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(var(--gold-rgb), 0.25);
+  color:var(--cream);
+  width:36px; height:36px;
+  border-radius:50%;
+  cursor:pointer;
+  font-size:15px;
+  display:flex; align-items:center; justify-content:center;
+  transition:transform 0.2s var(--spring), border-color 0.2s ease;
+}
+.icon-btn:hover{ border-color:var(--gold); }
+.icon-btn:active{ transform:scale(0.9); }
+.top-bar-inner{ display:flex; align-items:center; justify-content:center; gap:10px; position:relative; width:100%; }
+.top-bar-search-btn{ position:absolute; right:4px; }
+.top-bar-share-btn{ position:absolute; left:4px; }
+
+/* Applied only for the instant html2canvas snapshots #dayCard for sharing —
+   hides interactive chrome (duplicate/reset, quick-add chips) that has no
+   business appearing in an image of "my day", then is removed right after. */
+.card.sharing-snapshot .day-actions,
+.card.sharing-snapshot .template-row{ display:none; }
+
+/* ---- journal: day-level box (today only) ---- */
+.journal-day-box{
+  margin:0 0 14px;
+  padding:12px 14px;
+  border-radius:12px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(var(--gold-rgb), 0.18);
+}
+.journal-day-input{
+  width:100%;
+  border:none;
+  background:transparent;
+  color:var(--cream);
+  font-family:'Work Sans', sans-serif;
+  font-size:13.5px;
+  line-height:1.5;
+  resize:none;
+  overflow:hidden;
+  min-height:20px;
+}
+.journal-day-input::placeholder{ color:var(--muted); font-style:italic; }
+.journal-day-input:focus{ outline:none; }
+
+/* ---- journal: per-task note icon + inline box ---- */
+.note-icon{
+  align-self:center;
+  opacity:0;
+  transition:opacity 0.15s ease, color 0.15s ease;
+  color:var(--gold);
+  font-size:13px;
+}
+.slot:hover .note-icon{opacity:0.6;}
+.note-icon.has-note{ opacity:0.9; color:var(--terracotta); }
+.slot-journal-box{
+  margin:-4px 10px 8px 40px;
+  padding:8px 12px;
+  border-radius:10px;
+  background:rgba(var(--terracotta-rgb), 0.08);
+  border:1px solid rgba(var(--terracotta-rgb), 0.2);
+}
+.slot-journal-input{
+  width:100%;
+  border:none;
+  background:transparent;
+  color:var(--cream-dim);
+  font-family:'Work Sans', sans-serif;
+  font-size:12.5px;
+  line-height:1.5;
+  resize:none;
+  overflow:hidden;
+  min-height:18px;
+}
+.slot-journal-input::placeholder{ color:var(--muted); font-style:italic; }
+.slot-journal-input:focus{ outline:none; }
+
+/* ---- journal: browsing overlay entries (reuses .history-row shell) ---- */
+.journal-entry-note{
+  font-size:13px;
+  line-height:1.5;
+  color:var(--cream-dim);
+  margin:6px 0;
+}
+.journal-task-note{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:4px;
+}
+.journal-task-note b{ color:var(--gold-soft); font-weight:600; }
+
+/* ---- sync status pill ---- */
+.sync-status{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--muted);
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.sync-status.online{ color:var(--sage); }
+.sync-status.offline{ color:var(--terracotta); }
+
+/* ---- top-bar sync dot: a small always-visible pulse next to the title,
+   for the moment "is this actually synced right now?" without opening
+   Settings. Tapping it jumps straight to Settings → Sync for the detail. ---- */
+.top-bar-sync-dot{
+  background:none;
+  border:none;
+  padding:4px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.top-bar-sync-dot .dot{
+  width:8px; height:8px;
+  border-radius:50%;
+  background:var(--muted);
+  display:block;
+  transition:background 0.3s ease, box-shadow 0.3s ease;
+}
+.top-bar-sync-dot.online .dot{
+  background:var(--sage);
+  box-shadow:0 0 0 3px rgba(var(--sage-rgb), 0.25);
+  animation:syncPulse 2.4s ease-in-out infinite;
+}
+.top-bar-sync-dot.offline .dot{
+  background:var(--terracotta);
+  box-shadow:0 0 0 3px rgba(var(--terracotta-rgb), 0.2);
+}
+@keyframes syncPulse{
+  0%,100%{ box-shadow:0 0 0 3px rgba(var(--sage-rgb), 0.25); }
+  50%{ box-shadow:0 0 0 5px rgba(var(--sage-rgb), 0.1); }
+}
+@media (prefers-reduced-motion: reduce){
+  .top-bar-sync-dot.online .dot{ animation:none; }
+}
+
 @media (max-width:480px){
   .stat-chip{min-width:100px; padding:8px 12px;}
   .card{padding:22px 16px 20px;}
@@ -1120,26 +1658,15 @@ footer span{color:var(--gold);}
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div class="eyebrow">A Weekly Rhythm</div>
-    <h1>Keke's Days</h1>
-    <p class="subtitle">Wake at 8, tend to what matters, rest when it's earned.</p>
-  </header>
-
-  <div class="gold-rule"></div>
-
-  <div class="stats-bar" id="statsBar"></div>
-
-  <div id="insightCard"></div>
-
-  <div class="theme-row" id="themeRow" role="radiogroup" aria-label="Color theme">
-    <span class="theme-label">Theme</span>
-    <span class="theme-current" id="themeCurrentName" aria-live="polite"></span>
-  </div>
-
-  <div class="view-toggle" id="viewToggle">
-    <button data-view="day" class="active">Day view</button>
-    <button data-view="week">Week view</button>
+  <div class="top-bar">
+    <div class="top-bar-inner">
+      <button class="icon-btn top-bar-share-btn" id="shareDayBtn" aria-label="Share this day as an image">&#128228;</button>
+      <span class="top-bar-title">Keke's Days</span>
+      <button class="top-bar-sync-dot" id="topBarSyncDot" aria-label="Sync status: checking…" title="Sync status: checking…">
+        <span class="dot"></span>
+      </button>
+      <button class="icon-btn top-bar-search-btn" id="searchOpenBtn" aria-label="Search tasks">&#128269;</button>
+    </div>
   </div>
 
   <div id="nextUp" aria-live="polite"></div>
@@ -1148,17 +1675,21 @@ footer span{color:var(--gold);}
     <nav class="day-nav" id="dayNav"></nav>
     <div class="card" id="dayCard">
       <div class="day-head">
-        <div class="day-title" id="dayTitle"></div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <select id="duplicateDaySelect" class="reset-btn" style="cursor:pointer;" aria-label="Duplicate this day's tasks to another day">
-            <option value="">Duplicate to…</option>
-          </select>
-          <button class="reset-btn" id="resetBtn">Reset day to default</button>
+        <div class="day-title-row">
+          <span id="dayMoonIcon"></span>
+          <div class="day-title" id="dayTitle"></div>
         </div>
       </div>
+      <div class="day-actions">
+        <select id="duplicateDaySelect" class="day-action-btn" aria-label="Duplicate this day's tasks to another day">
+          <option value="">&#10687; Duplicate to…</option>
+        </select>
+        <button class="day-action-btn" id="resetBtn">&#8635; Reset day</button>
+      </div>
       <div class="day-note" id="dayNote" contenteditable="false"></div>
+      <div class="mood-row" id="moodRow"></div>
+      <div class="journal-day-box" id="journalDayBox"></div>
       <div id="slotList"></div>
-      <button class="add-slot" id="addSlotBtn">+ Add task</button>
       <div class="template-row" id="templateRow"></div>
     </div>
   </div>
@@ -1167,13 +1698,15 @@ footer span{color:var(--gold);}
     <div class="week-grid" id="weekGrid"></div>
   </div>
 
-  <div class="settings-row">
-    <button class="settings-btn" id="settingsBtn">&#9881; Settings</button>
+  <div id="pageInsights" style="display:none;">
+    <div class="stats-bar" id="statsBar"></div>
+    <div id="weeklyReviewCard"></div>
+    <div id="insightCard"></div>
+    <div class="insights-actions">
+      <button class="util-btn" id="viewWeeklyReviewBtn">&#128203; Full weekly review</button>
+      <button class="util-btn" id="viewPastWeeksBtn">&#128197; Past weeks</button>
+    </div>
   </div>
-
-  <button class="install-btn" id="installBtn">
-    <span class="install-icon">&#10133;</span> Add to Home Screen
-  </button>
 
   <div class="undo-toast" id="undoToast">
     <span id="undoToastMsg"></span>
@@ -1183,6 +1716,15 @@ footer span{color:var(--gold);}
   <footer>made with a little yarn and a lot of intention <span>&#10022;</span></footer>
 </div>
 
+<button class="fab-add" id="addSlotBtn" aria-label="Add task">+</button>
+
+<nav class="view-toggle" id="viewToggle">
+  <button data-view="day" class="active"><span class="tab-icon">&#9728;&#65039;</span><span class="tab-label">Today</span></button>
+  <button data-view="week"><span class="tab-icon">&#128197;</span><span class="tab-label">Week</span></button>
+  <button data-view="insights"><span class="tab-icon">&#128202;</span><span class="tab-label">Insights</span></button>
+  <button class="settings-btn" id="settingsBtn"><span class="tab-icon">&#9881;&#65039;</span><span class="tab-label">Settings</span></button>
+</nav>
+
 <div class="modal-overlay" id="settingsOverlay">
   <div class="modal-card">
     <div class="modal-head">
@@ -1190,6 +1732,16 @@ footer span{color:var(--gold);}
       <button class="modal-close" id="settingsModalClose">&times;</button>
     </div>
     <div class="modal-body">
+      <div class="settings-section">
+        <div class="settings-section-label">Appearance</div>
+        <div class="settings-row-item">
+          <select class="util-btn theme-select" id="themeSelect" aria-label="Color theme"></select>
+          <label class="theme-swatch custom-swatch" id="themeCustomSwatch" title="Custom — pick your own accent color">
+            <input type="color" id="themeCustomInput" aria-label="Custom theme accent color">
+          </label>
+        </div>
+      </div>
+
       <div class="settings-section">
         <div class="settings-section-label">Notifications</div>
         <div class="settings-row-item">
@@ -1207,12 +1759,18 @@ footer span{color:var(--gold);}
           <input type="time" class="util-btn" id="quietHoursStart" value="22:00" disabled aria-label="Quiet hours start time">
           <input type="time" class="util-btn" id="quietHoursEnd" value="07:00" disabled aria-label="Quiet hours end time">
         </div>
+        <div class="settings-row-item">
+          <button class="util-btn" id="alarmBtn" aria-pressed="false">&#9200; Alarms off</button>
+        </div>
+        <p class="settings-hint">Alarms play sound + vibration and a full-screen alert right at each task's start time. Reminders are a quiet heads-up before; Alarms are the loud one. Both only fire while this page is open.</p>
       </div>
 
       <div class="settings-section">
         <div class="settings-section-label">History</div>
         <div class="settings-row-item">
           <button class="util-btn" id="historyBtn">&#128197; Past weeks</button>
+          <button class="util-btn" id="weeklyReviewBtn">&#128203; Weekly review</button>
+          <button class="util-btn" id="journalBtn">&#128214; Journal</button>
         </div>
       </div>
 
@@ -1227,8 +1785,60 @@ footer span{color:var(--gold);}
           <input type="file" id="importFileInput" accept="application/json" style="display:none;">
         </div>
       </div>
+      <div class="settings-section">
+        <div class="settings-section-label">Sync</div>
+        <div class="settings-row-item">
+          <span class="sync-status" id="syncStatus">&#9679; Checking…</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-label">App</div>
+        <div class="settings-row-item">
+          <button class="install-btn" id="installBtn">
+            <span class="install-icon">&#10133;</span> Add to Home Screen
+          </button>
+        </div>
+      </div>
     </div>
     <button class="modal-ok" id="settingsModalOk">Close</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="journalOverlay">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span>Journal</span>
+      <button class="modal-close" id="journalModalClose">&times;</button>
+    </div>
+    <div class="modal-body" id="journalModalBody"></div>
+    <button class="modal-ok" id="journalModalOk">Close</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="searchOverlay">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span>Search</span>
+      <button class="modal-close" id="searchModalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search tasks or notes…" autocomplete="off">
+      <div id="searchResults"></div>
+    </div>
+    <button class="modal-ok" id="searchModalOk">Close</button>
+  </div>
+</div>
+
+<div class="alarm-overlay" id="alarmOverlay" role="alertdialog" aria-live="assertive" aria-label="Task alarm">
+  <div class="alarm-card">
+    <div class="alarm-kicker">&#9200; It's time</div>
+    <div class="alarm-time" id="alarmTime"></div>
+    <div class="alarm-label" id="alarmLabel"></div>
+    <div class="alarm-desc" id="alarmDesc"></div>
+    <div class="alarm-actions">
+      <button class="alarm-snooze" id="alarmSnoozeBtn">Snooze 5 min</button>
+      <button class="alarm-dismiss" id="alarmDismissBtn">Dismiss</button>
+    </div>
   </div>
 </div>
 
@@ -1267,6 +1877,7 @@ footer span{color:var(--gold);}
         <li>Tap any task to edit its time, name, or details.</li>
         <li>Drag the handle on the left of a task to reorder it.</li>
         <li>Tap the note under the day title to write today's context.</li>
+        <li>Jot a line in <b>today's journal box</b>, or tap the &#128221; on any task to note how it went — browse it all later in Settings &rarr; Journal.</li>
         <li>Pick a color theme up top &mdash; it's saved just for you.</li>
         <li>Turn on <b>Reminders</b> to get a nudge before each task.</li>
       </ol>
@@ -1275,8 +1886,13 @@ footer span{color:var(--gold);}
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
-const defaultSchedule = {
+/* html2canvas may fail to load offline (installed PWA with no connection) —
+   every call site below checks `typeof html2canvas !== 'undefined'` first
+   and falls back to a friendly alert rather than throwing. */const defaultSchedule = {
   Monday: { note: "Placement day", slots: [
     {time:"8:00 AM", label:"Wake up", desc:"Rise and greet the day", kind:"normal", done:false},
     {time:"8:15 – 8:45 AM", label:"Morning routine", desc:"Get ready for placement", kind:"normal", done:false},
@@ -1339,25 +1955,149 @@ const defaultSchedule = {
 const days = Object.keys(defaultSchedule);
 let schedule = JSON.parse(JSON.stringify(defaultSchedule));
 
-/* ---- persistence ----
-   The Claude-artifact sandbox exposes a window.storage API, but a standalone
-   installed app (PWA / Capacitor / anything hosted outside claude.ai) has no
-   such thing — those calls would silently fail and nothing would ever save.
-   This shim gives the rest of the app the same tiny get/set(key, value)
-   shape backed by real localStorage, so it works identically whether it's
-   opened in a browser tab, installed to a home screen, or wrapped native. */
+/* ---- persistence + realtime sync ----
+   localStorage stays the fast, always-available cache — the app renders
+   instantly and works fully offline. Firebase Realtime Database sits on
+   top as the shared source of truth between Daniel's and Keke's devices:
+   every write goes to both, and a live listener picks up changes made
+   from the other device without needing a manual refresh.
+
+   No auth here, by design — access is gated by knowing this exact,
+   randomly-generated database path instead. Anyone who doesn't have this
+   URL has no way to find or touch this data. */
+
+// ⚠️ SETUP: paste your sa-path-roster project's config below — Firebase
+// console → Project settings → General → "Your apps" → SDK setup and
+// configuration (the same object your roster app already uses).
+const firebaseConfig = {
+  apiKey: "AIzaSyDtbsiwQW3LMw2u8kQwNUQEpNIamGfaieM",
+  authDomain: "sa-path-roster.firebaseapp.com",
+  databaseURL: "https://sa-path-roster-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sa-path-roster",
+  storageBucket: "sa-path-roster.firebasestorage.app",
+  messagingSenderId: "708685623501",
+  appId: "1:708685623501:web:77717b050352071b2cf984"
+};
+
+// A dedicated, randomly-generated path under the same database as the
+// roster app — its security rules are scoped per-path, so this can sit
+// alongside the roster data with its own (open) rule and not touch it.
+// Change the random suffix any time to invalidate every existing device's
+// access and start fresh.
+const FIREBASE_DB_PATH = 'planners/keke-weekly-rhythm-62f36c7d5cb40852';
+
+let firebaseReady = false;
+let dbRef = null;
+let lastSyncedValue = null; // guards against reacting to our own write echoing back
+
+try{
+  if(firebaseConfig.apiKey !== 'PASTE_ME' && typeof firebase !== 'undefined'){
+    firebase.initializeApp(firebaseConfig);
+    dbRef = firebase.database(firebaseConfig.databaseURL).ref(FIREBASE_DB_PATH);
+    firebaseReady = true;
+  }
+}catch(e){ console.error('Firebase init failed — falling back to local-only storage', e); }
+
 const storage = {
   async get(key){
+    // Local-first: always have something to render immediately, even
+    // offline or before Firebase has responded.
+    let local = null;
     try{
       const v = localStorage.getItem(key);
-      return v === null ? null : { key, value: v };
-    }catch(e){ return null; }
+      local = v === null ? null : { key, value: v };
+    }catch(e){ /* ignore */ }
+
+    if(!firebaseReady) return local;
+
+    try{
+      const snapshot = await Promise.race([
+        dbRef.once('value'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
+      ]);
+      const remoteValue = snapshot.val();
+      if(remoteValue){
+        lastSyncedValue = remoteValue;
+        try{ localStorage.setItem(key, remoteValue); }catch(e){ /* ignore */ }
+        return { key, value: remoteValue };
+      }
+      // Firebase path is empty (first time it's ever been opened) — seed
+      // it from whatever's already local, so the first device to load
+      // becomes the starting point rather than wiping anything.
+      if(local){
+        lastSyncedValue = local.value;
+        dbRef.set(local.value).catch(e => console.error('Initial Firebase seed failed', e));
+      }
+      return local;
+    }catch(e){
+      console.error('Firebase read failed — using local copy', e);
+      return local;
+    }
   },
   async set(key, value){
-    try{ localStorage.setItem(key, value); return { key, value }; }
-    catch(e){ console.error('Could not persist', e); return null; }
+    try{ localStorage.setItem(key, value); }
+    catch(e){ console.error('Could not persist locally', e); }
+
+    if(firebaseReady){
+      lastSyncedValue = value;
+      dbRef.set(value).catch(e => console.error('Firebase write failed — change is saved locally only', e));
+    }
+    return { key, value };
   }
 };
+
+// Live sync: react to changes made from Keke's device (or any other tab)
+// without a manual refresh. Skips its own echo (lastSyncedValue) and
+// skips reloading mid-edit so a live edit form isn't yanked out from
+// under whoever's typing.
+if(firebaseReady){
+  dbRef.on('value', (snapshot) => {
+    const remoteValue = snapshot.val();
+    if(!remoteValue || remoteValue === lastSyncedValue) return;
+    if(editingIndex !== null) return; // will reconcile on the next save
+    lastSyncedValue = remoteValue;
+    try{ localStorage.setItem(STORAGE_KEY, remoteValue); }catch(e){ /* ignore */ }
+    loadSchedule();
+  });
+}
+
+/* ---- sync status pill (Settings → Sync) ----
+   Firebase's special ".info/connected" path is a live boolean maintained
+   by the SDK itself — the honest way to show "actually talking to the
+   server right now" rather than just "a config object exists". */
+function updateSyncStatusUI(connected){
+  const el = document.getElementById('syncStatus');
+  const dot = document.getElementById('topBarSyncDot');
+  let text, cls;
+  if(!firebaseReady){
+    text = '\u25CF Local only — Firebase not configured yet';
+    cls = 'offline';
+  } else if(connected){
+    text = '\u25CF Synced with Keke\u2019s device';
+    cls = 'online';
+  } else {
+    text = '\u25CF Offline — saving locally, will sync when back online';
+    cls = 'offline';
+  }
+  if(el){ el.textContent = text; el.className = 'sync-status ' + cls; }
+  if(dot){
+    dot.className = 'top-bar-sync-dot ' + cls;
+    dot.setAttribute('aria-label', 'Sync status: ' + text.replace('\u25CF ', ''));
+    dot.title = text.replace('\u25CF ', '');
+  }
+}
+document.getElementById('topBarSyncDot').addEventListener('click', () => {
+  settingsOverlay.classList.add('open');
+  document.querySelectorAll('.view-toggle button[data-view]').forEach(b => b.classList.remove('active'));
+  document.getElementById('settingsBtn').classList.add('active');
+  const syncEl = document.getElementById('syncStatus');
+  if(syncEl) syncEl.closest('.settings-section').scrollIntoView({behavior:'smooth', block:'center'});
+});
+if(firebaseReady){
+  firebase.database(firebaseConfig.databaseURL).ref('.info/connected').on('value', (snap) => updateSyncStatusUI(snap.val() === true));
+} else {
+  updateSyncStatusUI(false);
+}
 
 /* todayName used to be computed once and frozen — if the app stayed open
    past midnight, "today" would never advance. Compute it fresh every time. */
@@ -1395,6 +2135,7 @@ let currentThemeId = 'blush';
 let customAccent = '#E8A4BD'; // seed color for the user-generated "Custom" theme
 let remindersEnabled = false;
 let reminderLeadMin = 5;
+let alarmsEnabled = false;
 let quietHoursEnabled = false;
 let quietHoursStart = '22:00';
 let quietHoursEnd = '07:00';
@@ -1402,8 +2143,15 @@ let weekHistory = [];
 let slotHistory = {};   // "Day|Label" -> array of booleans, oldest first, capped at 8
 let dayHistory = {};    // "Day" -> array of completion percentages, oldest first, capped at 8
 let dismissedInsights = {}; // insight key -> weekKey it was dismissed in (reappears next week if still true)
+let weeklyReviewDismissed = {}; // weekKey -> true once dismissed for that week
+let moodLog = {}; // "YYYY-MM-DD" -> "low"|"medium"|"high", today's energy tag only
+let journal = {}; // "YYYY-MM-DD" -> { note: "...", tasks: { taskLabel: "..." } } — dated entries, separate from the recurring weekday note
 let isFirstRun = false;
 const notifiedSlots = new Set();
+const alarmedSlots = new Set(); // "Day-index" keys already alarmed today, mirrors notifiedSlots
+let currentAlarmSlot = null;    // { day, index, key } while an alarm is actively showing
+let alarmSoundInterval = null;
+let audioCtx = null;
 
 /* ---- ISO-ish week key, used to detect when a new week has started ---- */
 function getWeekKey(d = new Date()){
@@ -1419,6 +2167,7 @@ let currentWeekKey = getWeekKey();
 function resetAllCompletion(){
   days.forEach(day => { schedule[day].slots.forEach(s => { s.done = false; }); });
   notifiedSlots.clear();
+  alarmedSlots.clear();
 }
 
 /* If real time has rolled into a new week since last save, archive last
@@ -1462,6 +2211,7 @@ async function loadSchedule(){
         customAccent = typeof parsed.customAccent === 'string' ? parsed.customAccent : customAccent;
         remindersEnabled = !!parsed.reminders && (typeof Notification !== 'undefined' && Notification.permission === 'granted');
         reminderLeadMin = [0,5,10,15,30].includes(parsed.reminderLeadMin) ? parsed.reminderLeadMin : 5;
+        alarmsEnabled = !!parsed.alarmsEnabled;
         quietHoursEnabled = !!parsed.quietHoursEnabled;
         quietHoursStart = typeof parsed.quietHoursStart === 'string' ? parsed.quietHoursStart : '22:00';
         quietHoursEnd = typeof parsed.quietHoursEnd === 'string' ? parsed.quietHoursEnd : '07:00';
@@ -1469,6 +2219,9 @@ async function loadSchedule(){
         slotHistory = (parsed.slotHistory && typeof parsed.slotHistory === 'object') ? parsed.slotHistory : {};
         dayHistory = (parsed.dayHistory && typeof parsed.dayHistory === 'object') ? parsed.dayHistory : {};
         dismissedInsights = (parsed.dismissedInsights && typeof parsed.dismissedInsights === 'object') ? parsed.dismissedInsights : {};
+        weeklyReviewDismissed = (parsed.weeklyReviewDismissed && typeof parsed.weeklyReviewDismissed === 'object') ? parsed.weeklyReviewDismissed : {};
+        moodLog = (parsed.moodLog && typeof parsed.moodLog === 'object') ? parsed.moodLog : {};
+        journal = (parsed.journal && typeof parsed.journal === 'object') ? parsed.journal : {};
         currentWeekKey = parsed.weekKey || getWeekKey();
       } else {
         // legacy format: raw schedule object with no theme wrapper
@@ -1485,6 +2238,7 @@ async function loadSchedule(){
   renderThemeRow(currentThemeId);
   applyTheme(currentThemeId);
   updateReminderBtn();
+  updateAlarmBtn();
   updateQuietHoursUI();
   renderTemplateRow();
   renderAll();
@@ -1532,7 +2286,7 @@ async function saveSchedule(){
       };
     });
     await storage.set(STORAGE_KEY, JSON.stringify({
-      schedule: cleanSchedule, theme: currentThemeId, customAccent, reminders: remindersEnabled, reminderLeadMin, quietHoursEnabled, quietHoursStart, quietHoursEnd, weekHistory, slotHistory, dayHistory, dismissedInsights, weekKey: currentWeekKey
+      schedule: cleanSchedule, theme: currentThemeId, customAccent, reminders: remindersEnabled, reminderLeadMin, alarmsEnabled, quietHoursEnabled, quietHoursStart, quietHoursEnd, weekHistory, slotHistory, dayHistory, dismissedInsights, weeklyReviewDismissed, moodLog, journal, weekKey: currentWeekKey
     }));
   }
   catch(e){ console.error('Could not save schedule', e); }
@@ -1668,72 +2422,48 @@ function applyTheme(themeId){
     document.body.style.setProperty(`--${k}-rgb`, `${r},${g},${b}`);
   });
   document.body.setAttribute('data-theme', theme.id);
-  document.querySelectorAll('.theme-swatch').forEach(sw => {
-    const isCustomSwatch = sw.classList.contains('custom-swatch');
-    const isActive = isCustomSwatch ? theme.id === 'custom' : sw.dataset.theme === theme.id;
-    sw.classList.toggle('active', isActive);
-    if(!isCustomSwatch){
-      sw.setAttribute('aria-checked', String(isActive));
-      sw.tabIndex = isActive ? 0 : -1; // roving tabindex: one stop in the tab order, arrow keys move within
-    }
-  });
-  const nameEl = document.getElementById('themeCurrentName');
-  if(nameEl) nameEl.textContent = theme.name;
+  const select = document.getElementById('themeSelect');
+  if(select && select.value !== theme.id) select.value = theme.id;
+  const customSwatch = document.getElementById('themeCustomSwatch');
+  if(customSwatch) customSwatch.classList.toggle('active', theme.id === 'custom');
   updateThemeColorMeta(theme);
 }
 
 function renderThemeRow(activeId){
-  const row = document.getElementById('themeRow');
-  row.querySelectorAll('.theme-swatch').forEach(el => el.remove());
-  themes.forEach((t, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'theme-swatch' + (t.id === activeId ? ' active' : '');
-    // Two-tone preview from the theme's own palette (not the currently active
-    // one) so each swatch actually previews its mood, not just one dot color.
-    btn.style.background = `linear-gradient(135deg, ${t.vars.gold} 0%, ${t.vars.rose} 100%)`;
-    btn.dataset.theme = t.id;
-    btn.type = 'button';
-    btn.title = t.name;
-    btn.setAttribute('role', 'radio');
-    btn.setAttribute('aria-label', t.name);
-    btn.setAttribute('aria-checked', String(t.id === activeId));
-    btn.tabIndex = t.id === activeId ? 0 : -1;
-    btn.addEventListener('click', () => {
-      currentThemeId = t.id;
-      applyTheme(t.id);
-      saveSchedule();
-    });
-    btn.addEventListener('keydown', (e) => {
-      if(e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-      e.preventDefault();
-      const next = themes[(i + (e.key === 'ArrowRight' ? 1 : themes.length - 1)) % themes.length];
-      currentThemeId = next.id;
-      applyTheme(next.id);
-      saveSchedule();
-      row.querySelector(`.theme-swatch[data-theme="${next.id}"]`).focus();
-    });
-    row.appendChild(btn);
-  });
+  const select = document.getElementById('themeSelect');
+  // Assigning to .onchange (rather than addEventListener) is deliberate:
+  // renderThemeRow can run again after an import, and the select element
+  // itself isn't recreated the way the old swatch buttons were, so
+  // addEventListener would silently stack a second handler on re-render.
+  select.innerHTML = themes.map(t => `<option value="${t.id}">${t.name}</option>`).join('')
+    + `<option value="custom">Custom</option>`;
+  select.value = activeId;
+  select.onchange = () => {
+    currentThemeId = select.value;
+    applyTheme(currentThemeId);
+    saveSchedule();
+    if(currentThemeId === 'custom'){
+      // Picking "Custom" from a plain menu is a dead end with nothing to
+      // actually look at yet — open the native color picker right away so
+      // there's an immediate next step instead of a theme that just looks
+      // like whatever accent was left over from last time.
+      document.getElementById('themeCustomInput').click();
+    }
+  };
 
-  // "Custom" swatch: a real <input type="color"> disguised as a swatch dot.
-  // Tapping it opens the native color picker; every color the user drags
-  // across regenerates and live-previews a full theme immediately.
-  const customLabel = document.createElement('label');
-  customLabel.className = 'theme-swatch custom-swatch' + (activeId === 'custom' ? ' active' : '');
-  customLabel.title = 'Custom — pick your own accent color';
-  customLabel.style.background = 'conic-gradient(from 90deg, #FF6FA5, #FFD166, #8FBE6E, #6FA3A3, #9C8CE0, #FF6FA5)';
-  const customInput = document.createElement('input');
-  customInput.type = 'color';
+  // "Custom" swatch: a real <input type="color"> disguised as a swatch dot,
+  // kept outside the dropdown since a color wheel isn't something a <select>
+  // can represent. Tapping it opens the native color picker; every color
+  // dragged across regenerates and live-previews a full theme immediately.
+  const customInput = document.getElementById('themeCustomInput');
   customInput.value = customAccent;
-  customInput.setAttribute('aria-label', 'Custom theme accent color');
-  customInput.addEventListener('input', (e) => {
+  customInput.oninput = (e) => {
     customAccent = e.target.value;
     currentThemeId = 'custom';
+    select.value = 'custom';
     applyTheme('custom');
-  });
-  customInput.addEventListener('change', () => saveSchedule());
-  customLabel.appendChild(customInput);
-  row.appendChild(customLabel);
+  };
+  customInput.onchange = () => saveSchedule();
 }
 
 function tagFor(day){
@@ -1800,6 +2530,85 @@ function reindexTimes(day){
   schedule[day].slots.forEach(s => { s._time = parseTimeRange(s.time); });
 }
 function reindexAllTimes(){ days.forEach(reindexTimes); }
+
+/* ---- minutes-since-midnight -> display string, the inverse of parseClock.
+   Used by the insight actions below to rewrite a slot's time string after
+   nudging it, without asking the person to retype it by hand. ---- */
+function formatClock(min){
+  min = ((min % (24*60)) + 24*60) % (24*60);
+  const h = Math.floor(min / 60), m = min % 60;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  let h12 = h % 12; if(h12 === 0) h12 = 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+function formatTimeString(startMin, endMin){
+  if(endMin === null || endMin === undefined) return formatClock(startMin);
+  return `${formatClock(startMin)} – ${formatClock(endMin)}`;
+}
+
+/* Shift a slot's time later by deltaMin, preserving its original duration
+   if it had a range. Returns false (and does nothing) for slots whose time
+   couldn't be parsed in the first place, e.g. free-text labels like
+   "Evening" — there's nothing to shift. */
+function nudgeSlotLater(day, idx, deltaMin){
+  const slot = schedule[day].slots[idx];
+  if(!slot) return false;
+  const t = slot._time || parseTimeRange(slot.time);
+  if(!t || t.startMin === null) return false;
+  const newStart = t.startMin + deltaMin;
+  if(t.endMin !== null){
+    const duration = t.crossesMidnight ? (t.endMin + 24*60 - t.startMin) : (t.endMin - t.startMin);
+    slot.time = formatTimeString(newStart, newStart + duration);
+  } else {
+    slot.time = formatClock(newStart);
+  }
+  reindexTimes(day);
+  return true;
+}
+
+/* Shared delete-with-undo, factored out of the slot editor's Delete button
+   so insight-card actions can trigger the exact same safe behavior. */
+function deleteSlotWithUndo(day, idx, toastMessage){
+  const slots = schedule[day].slots;
+  const deletedSlot = slots[idx];
+  if(!deletedSlot) return;
+  slots.splice(idx, 1);
+  saveSchedule();
+  if(activeDay === day){ renderDay(); }
+  renderStats(); renderNextUp(); renderInsightCard();
+  showUndoToast(toastMessage || `Deleted "${deletedSlot.label}"`, () => {
+    schedule[day].slots.splice(idx, 0, deletedSlot);
+    reindexTimes(day);
+    saveSchedule();
+    if(activeDay === day){ renderDay(); }
+    renderStats(); renderNextUp(); renderInsightCard();
+  });
+}
+
+/* Relocate a slot from one day to another (used by the "toughest day"
+   insight to offer moving the specific task dragging that day down). */
+function moveSlotToDay(fromDay, idx, toDay){
+  const slots = schedule[fromDay].slots;
+  const slot = slots[idx];
+  if(!slot) return;
+  slots.splice(idx, 1);
+  const movedSlot = { ...slot, done: false };
+  schedule[toDay].slots.push(movedSlot);
+  reindexTimes(fromDay);
+  reindexTimes(toDay);
+  saveSchedule();
+  if(activeDay === fromDay || activeDay === toDay) renderDay();
+  renderStats(); renderNextUp(); renderInsightCard();
+  showUndoToast(`Moved "${slot.label}" to ${toDay}`, () => {
+    schedule[toDay].slots.pop();
+    schedule[fromDay].slots.splice(idx, 0, slot);
+    reindexTimes(fromDay);
+    reindexTimes(toDay);
+    saveSchedule();
+    if(activeDay === fromDay || activeDay === toDay) renderDay();
+    renderStats(); renderNextUp(); renderInsightCard();
+  });
+}
 
 function getCurrentSlotIndex(){
   if(activeDay !== todayName) return -1;
@@ -1889,7 +2698,10 @@ function computeMissStreak(arr){
 function generateInsights(){
   const insights = [];
 
-  // A specific task that's been skipped several weeks running.
+  // A specific task that's been skipped several weeks running. Rather than
+  // just linking to the editor, offer the two fixes that actually resolve
+  // "this keeps getting skipped": give it more breathing room, or admit
+  // it doesn't belong in the week and remove it — both one tap, both undoable.
   Object.keys(slotHistory).forEach(key => {
     const streak = computeMissStreak(slotHistory[key]);
     if(streak < 3) return;
@@ -1899,19 +2711,62 @@ function generateInsights(){
     if(!schedule[day]) return;
     const slotIdx = schedule[day].slots.findIndex(s => s.label === label);
     if(slotIdx === -1) return; // task no longer exists — nothing left to act on
+    const slot = schedule[day].slots[slotIdx];
+    const parsedTime = slot._time || parseTimeRange(slot.time);
+    const canNudge = !!parsedTime && parsedTime.startMin !== null;
+    const actions = [];
+    if(canNudge){
+      actions.push({
+        label: 'Push back 30 min',
+        style: 'primary',
+        onClick: () => {
+          const idx = schedule[day].slots.findIndex(s => s.label === label);
+          if(idx === -1) return;
+          const before = schedule[day].slots[idx].time;
+          nudgeSlotLater(day, idx, 30);
+          saveSchedule();
+          if(activeDay === day) renderDay();
+          renderStats(); renderNextUp(); renderInsightCard();
+          showUndoToast(`Pushed back "${label}"`, () => {
+            const idx2 = schedule[day].slots.findIndex(s => s.label === label);
+            if(idx2 !== -1){
+              schedule[day].slots[idx2].time = before;
+              reindexTimes(day);
+              saveSchedule();
+              if(activeDay === day) renderDay();
+              renderStats(); renderNextUp(); renderInsightCard();
+            }
+          });
+        }
+      });
+    } else {
+      actions.push({
+        label: 'Edit it',
+        style: 'primary',
+        onClick: () => {
+          switchToDayView();
+          activeDay = day;
+          editingIndex = slotIdx;
+          renderAll();
+          document.getElementById('dayCard').scrollIntoView({behavior:'smooth', block:'start'});
+        }
+      });
+    }
+    actions.push({
+      label: 'Remove it',
+      style: 'secondary',
+      onClick: () => {
+        const idx = schedule[day].slots.findIndex(s => s.label === label);
+        if(idx === -1) return;
+        deleteSlotWithUndo(day, idx, `Removed "${label}" from ${day}`);
+      }
+    });
     insights.push({
       key,
       priority: 10 + streak,
       icon: '&#128161;',
-      html: `You've skipped <b>${label}</b> on <b>${day}</b> ${streak} weeks running. Want to adjust it, or let it go?`,
-      primaryLabel: 'Edit it',
-      onPrimary: () => {
-        switchToDayView();
-        activeDay = day;
-        editingIndex = slotIdx;
-        renderAll();
-        document.getElementById('dayCard').scrollIntoView({behavior:'smooth', block:'start'});
-      }
+      html: `You've skipped <b>${label}</b> on <b>${day}</b> ${streak} weeks running. Want to give it more room, or let it go?`,
+      actions
     });
   });
 
@@ -1931,19 +2786,48 @@ function generateInsights(){
     const spread = dayAverages[best] - dayAverages[worst];
     const patternKey = 'day-pattern-' + worst;
     if(spread >= 25 && dismissedInsights[patternKey] !== currentWeekKey){
-      insights.push({
-        key: patternKey,
-        priority: 1,
-        icon: '&#128202;',
-        html: `<b>${worst}s</b> tend to be your toughest day (avg ${Math.round(dayAverages[worst])}% done) — <b>${best}s</b> are your strongest (avg ${Math.round(dayAverages[best])}%). Might be worth lightening ${worst}'s load.`,
-        primaryLabel: 'View ' + worst,
-        onPrimary: () => {
+      // Find the single task on the worst day with the lowest completion
+      // rate in its own history — that's the specific thing dragging the
+      // day down, not just "the day" in the abstract. If we have enough
+      // history to name it, offer to move it off that day in one tap;
+      // otherwise fall back to just pointing at the day.
+      let worstSlotLabel = null, worstSlotAvg = Infinity, worstSlotIdx = -1;
+      schedule[worst].slots.forEach((s, i) => {
+        const arr = slotHistory[worst + '|' + s.label];
+        if(!arr || arr.length < 3) return;
+        const avg = arr.filter(Boolean).length / arr.length;
+        if(avg < worstSlotAvg){ worstSlotAvg = avg; worstSlotLabel = s.label; worstSlotIdx = i; }
+      });
+      const actions = [];
+      if(worstSlotLabel && worstSlotAvg < 0.5){
+        actions.push({
+          label: `Move it to ${best}`,
+          style: 'primary',
+          onClick: () => {
+            const idx = schedule[worst].slots.findIndex(s => s.label === worstSlotLabel);
+            if(idx !== -1) moveSlotToDay(worst, idx, best);
+          }
+        });
+      }
+      actions.push({
+        label: 'View ' + worst,
+        style: worstSlotLabel ? 'secondary' : 'primary',
+        onClick: () => {
           switchToDayView();
           activeDay = worst;
           editingIndex = null;
           renderAll();
           document.getElementById('dayCard').scrollIntoView({behavior:'smooth', block:'start'});
         }
+      });
+      insights.push({
+        key: patternKey,
+        priority: 1,
+        icon: '&#128202;',
+        html: worstSlotLabel
+          ? `<b>${worst}s</b> tend to be your toughest day (avg ${Math.round(dayAverages[worst])}% done) — <b>${worstSlotLabel}</b> is the biggest reason why, skipped more than half the time. <b>${best}s</b> are your strongest (avg ${Math.round(dayAverages[best])}%).`
+          : `<b>${worst}s</b> tend to be your toughest day (avg ${Math.round(dayAverages[worst])}% done) — <b>${best}s</b> are your strongest (avg ${Math.round(dayAverages[best])}%). Might be worth lightening ${worst}'s load.`,
+        actions
       });
     }
   }
@@ -1956,24 +2840,131 @@ function renderInsightCard(){
   const container = document.getElementById('insightCard');
   const insights = generateInsights();
   if(insights.length === 0){ container.innerHTML = ''; return; }
-  const insight = insights[0];
-  container.innerHTML = `
+  // Now that insights resolve in one tap instead of just linking out, queuing
+  // them one-at-a-time means a real fix sits hidden behind a dismiss click.
+  // Showing the top 2 lets two genuinely different, non-competing patterns
+  // (e.g. one skipped task + one tough day) surface together without
+  // turning the top of the page into a wall of cards.
+  const shown = insights.slice(0, 2);
+  const cardHtml = (insight, cardIdx) => {
+    const actions = insight.actions || (insight.primaryLabel ? [{label: insight.primaryLabel, style: 'primary', onClick: insight.onPrimary}] : []);
+    const actionButtons = actions.map((a, i) =>
+      `<button class="insight-btn-${a.style === 'secondary' ? 'secondary' : 'primary'}" data-card="${cardIdx}" data-action-idx="${i}">${a.label}</button>`
+    ).join('');
+    return `
     <div class="insight-card">
       <div class="insight-icon">${insight.icon}</div>
       <div class="insight-body">
         <div class="insight-text">${insight.html}</div>
         <div class="insight-actions">
-          <button class="insight-btn-primary" id="insightPrimaryBtn">${insight.primaryLabel}</button>
-          <button class="insight-btn-dismiss" id="insightDismissBtn">Dismiss</button>
+          ${actionButtons}
+          <button class="insight-btn-dismiss" data-card="${cardIdx}" data-dismiss="1">Dismiss</button>
         </div>
       </div>
     </div>`;
-  document.getElementById('insightPrimaryBtn').addEventListener('click', insight.onPrimary);
-  document.getElementById('insightDismissBtn').addEventListener('click', () => {
-    dismissedInsights[insight.key] = currentWeekKey;
-    saveSchedule();
-    renderInsightCard();
+  };
+  container.innerHTML = shown.map(cardHtml).join('');
+  shown.forEach((insight, cardIdx) => {
+    const actions = insight.actions || (insight.primaryLabel ? [{label: insight.primaryLabel, style: 'primary', onClick: insight.onPrimary}] : []);
+    actions.forEach((a, i) => {
+      const btn = container.querySelector(`[data-card="${cardIdx}"][data-action-idx="${i}"]`);
+      if(btn) btn.addEventListener('click', a.onClick);
+    });
+    const dismissBtn = container.querySelector(`[data-card="${cardIdx}"][data-dismiss="1"]`);
+    if(dismissBtn) dismissBtn.addEventListener('click', () => {
+      dismissedInsights[insight.key] = currentWeekKey;
+      saveSchedule();
+      renderInsightCard();
+    });
   });
+}
+
+/* ---- weekly review ----
+   A once-a-week checkpoint rather than a running tally: how the week that's
+   ending actually went, right next to what the coming week looks like, so
+   adjustments happen before Monday instead of getting noticed mid-week. */
+function computeWeeklyReview(){
+  const { totalTasks, doneTasks, fullDays } = computeStats();
+  const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const streak = computeStreak();
+
+  // Same "toughest day" signal the insight card uses, reused here rather
+  // than duplicated — only surfaces once there's enough history behind it.
+  const dayAverages = {};
+  days.forEach(day => {
+    const arr = dayHistory[day] || [];
+    if(arr.length >= 3) dayAverages[day] = arr.reduce((a,b) => a+b, 0) / arr.length;
+  });
+  const trackedDays = Object.keys(dayAverages);
+  let toughestDay = null;
+  if(trackedDays.length >= 4){
+    toughestDay = trackedDays.reduce((worst, d) => dayAverages[d] < dayAverages[worst] ? d : worst, trackedDays[0]);
+  }
+
+  const slotCounts = days.map(d => schedule[d].slots.length);
+  const maxSlots = Math.max(...slotCounts, 0);
+  const weekAhead = days.map(day => ({
+    day,
+    note: schedule[day].note,
+    count: schedule[day].slots.length,
+    heaviest: schedule[day].slots.length === maxSlots && maxSlots > 0
+  }));
+
+  return { pct, doneTasks, totalTasks, fullDays, streak, toughestDay, weekAhead };
+}
+
+function renderWeeklyReviewCard(forceShow){
+  const container = document.getElementById('weeklyReviewCard');
+  const alreadySeen = weeklyReviewDismissed[currentWeekKey] === true;
+  const isReviewDay = todayName === 'Sunday';
+  if(!forceShow && (!isReviewDay || alreadySeen)){
+    container.innerHTML = '';
+    return;
+  }
+  const r = computeWeeklyReview();
+  container.innerHTML = `
+    <div class="card review-card">
+      <div class="review-head">
+        <span class="review-eyebrow">Week in review</span>
+        <button class="review-close" id="reviewCloseBtn" aria-label="Dismiss weekly review">&times;</button>
+      </div>
+      <div class="review-body">
+        <div class="review-col">
+          <div class="review-col-label">This week</div>
+          <div class="review-stats">
+            <div class="review-stat">${r.pct}%<span class="review-stat-label">Done</span></div>
+            <div class="review-stat">${r.fullDays}/7<span class="review-stat-label">Full days</span></div>
+            <div class="review-stat">${r.streak} <span class="${r.streak > 0 ? 'flame-lit' : ''}">&#128293;</span><span class="review-stat-label">Streak</span></div>
+          </div>
+          <p class="review-note">${
+            r.toughestDay
+              ? `<b>${r.toughestDay}s</b> have been the hardest day to keep up with lately.`
+              : `${r.doneTasks}/${r.totalTasks} tasks done this week.`
+          }</p>
+        </div>
+        <div class="review-divider"></div>
+        <div class="review-col">
+          <div class="review-col-label">Week ahead</div>
+          <ul class="review-days">
+            ${r.weekAhead.map(d => `
+              <li class="review-day-row">
+                <span class="review-day-name${d.heaviest ? ' heaviest' : ''}">${d.day}${d.heaviest ? ' &#9733;' : ''}</span>
+                <span class="review-day-count">${d.count} task${d.count === 1 ? '' : 's'}</span>
+              </li>`).join('')}
+          </ul>
+        </div>
+      </div>
+      <div class="review-actions">
+        <button class="insight-btn-dismiss" id="reviewGotItBtn">Got it</button>
+      </div>
+    </div>`;
+  const dismiss = () => {
+    weeklyReviewDismissed[currentWeekKey] = true;
+    saveSchedule();
+    renderWeeklyReviewCard();
+  };
+  document.getElementById('reviewCloseBtn').addEventListener('click', dismiss);
+  document.getElementById('reviewGotItBtn').addEventListener('click', dismiss);
 }
 
 function renderStats(){
@@ -1994,7 +2985,7 @@ function renderStats(){
       <div class="stat-label">Fully complete days</div>
     </div>
     <div class="stat-chip">
-      <div class="stat-num">${streak} &#128293;</div>
+      <div class="stat-num">${streak} <span class="${streak > 0 ? 'flame-lit' : ''}">&#128293;</span></div>
       <div class="stat-label">Day streak</div>
     </div>
   `;
@@ -2064,6 +3055,12 @@ function renderSlotView(slot, i, isCurrent){
   const progressHtml = isCurrent
     ? `<div class="slot-progress"><div class="slot-progress-fill" style="width:${getSlotProgressPct(i)}%"></div></div>`
     : '';
+  const isToday = activeDay === todayName;
+  const dateKey = isToday ? todayDateKey() : null;
+  const existingNote = isToday ? ((journal[dateKey] && journal[dateKey].tasks && journal[dateKey].tasks[slot.label]) || '') : '';
+  const noteIconHtml = isToday
+    ? `<div class="note-icon${existingNote ? ' has-note' : ''}" role="button" aria-label="${existingNote ? 'Edit' : 'Add a'} note for ${slot.label}" tabindex="0">&#128221;</div>`
+    : '';
   row.innerHTML = `
     <span class="drag-handle" draggable="true" role="button" aria-label="Drag to reorder ${slot.label}" tabindex="0">&#10495;</span>
     <input type="checkbox" class="check" ${slot.done ? 'checked' : ''} aria-label="Mark ${slot.label} as ${slot.done ? 'not done' : 'done'}">
@@ -2073,6 +3070,7 @@ function renderSlotView(slot, i, isCurrent){
       <div class="slot-desc">${slot.desc}</div>
       ${progressHtml}
     </div>
+    ${noteIconHtml}
     <div class="edit-icon" role="button" aria-label="Edit ${slot.label}" tabindex="0">&#9998;</div>
   `;
   const checkbox = row.querySelector('.check');
@@ -2119,7 +3117,39 @@ function renderSlotView(slot, i, isCurrent){
     renderDay();
   });
 
-  return row;
+  if(!isToday) return row;
+
+  // Inline per-task journal note, today only. Returned as a DocumentFragment
+  // (not a wrapper div) so .slot stays a direct, flat child of #slotList —
+  // wrapping it would break the ":last-of-type" rule that removes the
+  // bottom border from the actual last task.
+  const noteIcon = row.querySelector('.note-icon');
+  const journalBox = document.createElement('div');
+  journalBox.className = 'slot-journal-box';
+  journalBox.style.display = 'none';
+  journalBox.innerHTML = `<textarea class="slot-journal-input" placeholder="Add a note about ${slot.label}…" aria-label="Journal note for ${slot.label}">${existingNote}</textarea>`;
+  const ta = journalBox.querySelector('.slot-journal-input');
+  ta.addEventListener('click', (e) => e.stopPropagation());
+  let deb = null;
+  ta.addEventListener('input', () => {
+    autoGrow(ta);
+    clearTimeout(deb);
+    deb = setTimeout(() => {
+      setJournalTaskNote(dateKey, slot.label, ta.value);
+      noteIcon.classList.toggle('has-note', !!ta.value.trim());
+    }, 500);
+  });
+  noteIcon.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const showing = journalBox.style.display !== 'none';
+    journalBox.style.display = showing ? 'none' : 'block';
+    if(!showing){ autoGrow(ta); ta.focus(); }
+  });
+
+  const frag = document.createDocumentFragment();
+  frag.appendChild(row);
+  frag.appendChild(journalBox);
+  return frag;
 }
 
 function renderSlotEdit(slot, i){
@@ -2183,18 +3213,9 @@ function renderSlotEdit(slot, i){
     renderDay();
   });
   row.querySelector('.btn-delete').addEventListener('click', () => {
-    const deletedSlot = schedule[activeDay].slots[i];
-    const deletedDay = activeDay;
-    schedule[activeDay].slots.splice(i, 1);
+    const deletedLabel = schedule[activeDay].slots[i].label;
     editingIndex = null;
-    saveSchedule();
-    renderDay(); renderStats(); renderNextUp();
-    showUndoToast(`Deleted "${deletedSlot.label}"`, () => {
-      schedule[deletedDay].slots.splice(i, 0, deletedSlot);
-      reindexTimes(deletedDay);
-      saveSchedule();
-      if(activeDay === deletedDay){ renderDay(); renderStats(); renderNextUp(); }
-    });
+    deleteSlotWithUndo(activeDay, i, `Deleted "${deletedLabel}"`);
   });
   row.querySelector('.btn-copy').addEventListener('click', () => {
     const targetDay = row.querySelector('.f-copy-day').value;
@@ -2246,17 +3267,139 @@ function zoneLabelEl(name){
   return el;
 }
 
+/* ---- moon-phase day glyph: a fixed phase per weekday, waxing to full
+   midweek and waning toward Sunday — a literal "weekly rhythm". ---- */
+const MOON_PHASES = {
+  Monday: 'waxing-crescent',
+  Tuesday: 'first-quarter',
+  Wednesday: 'waxing-gibbous',
+  Thursday: 'full',
+  Friday: 'waning-gibbous',
+  Saturday: 'last-quarter',
+  Sunday: 'waning-crescent'
+};
+function moonIconHTML(day, size){
+  const phase = MOON_PHASES[day] || 'full';
+  const style = size ? ` style="width:${size}px;height:${size}px;"` : '';
+  return `<span class="moon-icon phase-${phase}"${style}><span class="moon-shadow"></span></span>`;
+}
+
+/* ---- today's date key, used for the mood/energy tag (unlike the rest of
+   the schedule, mood is tied to a real calendar date, not a weekday) ---- */
+function todayDateKey(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function renderMoodRow(){
+  const container = document.getElementById('moodRow');
+  if(!container) return;
+  if(activeDay !== todayName){ container.innerHTML = ''; container.style.display = 'none'; return; }
+  container.style.display = 'flex';
+  const key = todayDateKey();
+  const current = moodLog[key];
+  const options = [
+    { level:'low', emoji:'&#128564;', label:'Low energy' },
+    { level:'medium', emoji:'&#128578;', label:'Medium energy' },
+    { level:'high', emoji:'&#9889;', label:'High energy' }
+  ];
+  container.innerHTML = `<span class="mood-label">Today's energy</span>` +
+    options.map(o => `<button class="mood-btn${current === o.level ? ' active' : ''}" data-level="${o.level}" aria-label="${o.label}" aria-pressed="${current === o.level}">${o.emoji}</button>`).join('');
+  container.querySelectorAll('.mood-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const level = btn.dataset.level;
+      moodLog[key] = (moodLog[key] === level) ? undefined : level; // tap again to clear
+      if(moodLog[key] === undefined) delete moodLog[key];
+      saveSchedule();
+      renderMoodRow();
+    });
+  });
+}
+
+
+/* ---- journal ----
+   Dated notes, separate from the recurring weekday .note field: a quick
+   line about today, or about a specific task, that becomes a real diary
+   over time rather than a template that gets overwritten every week.
+   Writing is restricted to today (same reasoning as the mood tag — a
+   "Monday" view could represent any Monday, so only the live one is
+   unambiguous); browsing past entries happens in the Journal overlay. */
+function autoGrow(ta){
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+function setJournalDayNote(dateKey, text){
+  const trimmed = text.trim();
+  if(trimmed){
+    if(!journal[dateKey]) journal[dateKey] = {};
+    journal[dateKey].note = text;
+  } else if(journal[dateKey]){
+    delete journal[dateKey].note;
+    if(!journal[dateKey].tasks || Object.keys(journal[dateKey].tasks).length === 0) delete journal[dateKey];
+  }
+  saveSchedule();
+}
+
+function setJournalTaskNote(dateKey, label, text){
+  const trimmed = text.trim();
+  if(trimmed){
+    if(!journal[dateKey]) journal[dateKey] = {};
+    if(!journal[dateKey].tasks) journal[dateKey].tasks = {};
+    journal[dateKey].tasks[label] = text;
+  } else if(journal[dateKey] && journal[dateKey].tasks){
+    delete journal[dateKey].tasks[label];
+    if(Object.keys(journal[dateKey].tasks).length === 0 && !journal[dateKey].note) delete journal[dateKey];
+  }
+  saveSchedule();
+}
+
+function renderJournalDayBox(){
+  const container = document.getElementById('journalDayBox');
+  if(!container) return;
+  if(activeDay !== todayName){ container.innerHTML = ''; container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  const dateKey = todayDateKey();
+  const existing = (journal[dateKey] && journal[dateKey].note) || '';
+  container.innerHTML = `<textarea class="journal-day-input" placeholder="Jot a note about today…" aria-label="Journal note for today">${existing}</textarea>`;
+  const ta = container.querySelector('.journal-day-input');
+  autoGrow(ta);
+  let deb = null;
+  ta.addEventListener('input', () => {
+    autoGrow(ta);
+    clearTimeout(deb);
+    deb = setTimeout(() => setJournalDayNote(dateKey, ta.value), 500);
+  });
+}
+
+
 function renderDay(){
   renderNav();
   const data = schedule[activeDay];
   document.getElementById('dayTitle').textContent = activeDay;
+  document.getElementById('dayMoonIcon').innerHTML = moonIconHTML(activeDay, 20);
   const dupSelect = document.getElementById('duplicateDaySelect');
   dupSelect.innerHTML = '<option value="">Duplicate to…</option>' +
     days.filter(d => d !== activeDay).map(d => `<option value="${d}">${d}</option>`).join('');
   const dayNote = document.getElementById('dayNote');
   dayNote.textContent = data.note;
+  renderMoodRow();
+  renderJournalDayBox();
   const slotList = document.getElementById('slotList');
   slotList.innerHTML = '';
+  if(data.slots.length === 0 && editingIndex === null){
+    slotList.innerHTML = `
+      <div class="empty-day">
+        <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="36" cy="36" r="34" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 5"/>
+          <path d="M24 36h24M36 24v24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <div class="empty-day-title">Nothing planned for ${activeDay} yet</div>
+        <div class="empty-day-sub">Tap "+ Add a task" below, or duplicate a task-filled day into this one.</div>
+      </div>`;
+    renderNextUp();
+    return;
+  }
   const currentIdx = getCurrentSlotIndex();
   let lastZone = null;
   data.slots.forEach((slot, i) => {
@@ -2291,7 +3434,7 @@ function renderWeek(){
     const more = total > 5 ? `<div class="week-mini-slot" style="opacity:0.6;">+${total-5} more</div>` : '';
     card.innerHTML = `
       <div class="week-card-head">
-        <div class="week-card-day">${day}</div>
+        <div class="week-card-day-row">${moonIconHTML(day, 14)}<div class="week-card-day">${day}</div></div>
         <div class="week-card-frac">${done}/${total}</div>
       </div>
       <div class="week-card-note">${data.note}</div>
@@ -2300,11 +3443,8 @@ function renderWeek(){
     `;
     card.addEventListener('click', () => {
       activeDay = day;
-      currentView = 'day';
-      document.querySelectorAll('.view-toggle button').forEach(b => b.classList.toggle('active', b.dataset.view === 'day'));
-      document.getElementById('dayView').style.display = 'block';
-      document.getElementById('weekView').style.display = 'none';
       renderDay();
+      showTab('day');
     });
     grid.appendChild(card);
   });
@@ -2312,6 +3452,7 @@ function renderWeek(){
 
 function renderAll(){
   renderStats();
+  renderWeeklyReviewCard();
   renderInsightCard();
   renderDay();
   renderWeek();
@@ -2389,24 +3530,32 @@ document.getElementById('resetWeekBtn').addEventListener('click', () => {
   });
 });
 
-/* ---- view toggle ---- */
-function switchToDayView(){
-  currentView = 'day';
-  document.querySelectorAll('.view-toggle button').forEach(b => b.classList.toggle('active', b.dataset.view === 'day'));
-  document.getElementById('dayView').style.display = 'block';
-  document.getElementById('weekView').style.display = 'none';
+/* ---- tab bar (Today / Week / Insights) ----
+   One shared function drives every entry point that changes which page
+   is visible — the delegated tab-bar click, jumping to a specific day
+   from an insight card, and tapping a week-card to open that day. */
+function showTab(view){
+  currentView = view;
+  document.querySelectorAll('.view-toggle button[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.getElementById('settingsBtn').classList.remove('active');
+  document.getElementById('dayView').style.display = view === 'day' ? 'block' : 'none';
+  document.getElementById('weekView').style.display = view === 'week' ? 'block' : 'none';
+  document.getElementById('pageInsights').style.display = view === 'insights' ? 'block' : 'none';
+  document.getElementById('addSlotBtn').style.display = view === 'day' ? 'flex' : 'none';
+  if(view === 'week') renderWeek();
+  if(view === 'insights'){ renderStats(); renderInsightCard(); renderWeeklyReviewCard(true); }
   renderNextUp();
+  window.scrollTo({top:0, behavior:'auto'});
+}
+
+function switchToDayView(){
+  showTab('day');
 }
 
 document.getElementById('viewToggle').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-view]');
   if(!btn) return;
-  currentView = btn.dataset.view;
-  document.querySelectorAll('.view-toggle button').forEach(b => b.classList.toggle('active', b === btn));
-  document.getElementById('dayView').style.display = currentView === 'day' ? 'block' : 'none';
-  document.getElementById('weekView').style.display = currentView === 'week' ? 'block' : 'none';
-  if(currentView === 'week') renderWeek();
-  renderNextUp();
+  showTab(btn.dataset.view);
 });
 
 /* ---- quick task templates ---- */
@@ -2593,15 +3742,164 @@ function checkReminders(){
   });
 }
 
+/* ---- loud alarms: sound + vibration + full-screen alert right at start time
+   (separate from the quiet "Reminders" lead-time Notification above) ---- */
+function updateAlarmBtn(){
+  const btn = document.getElementById('alarmBtn');
+  if(!btn) return;
+  btn.classList.toggle('active', alarmsEnabled);
+  btn.setAttribute('aria-pressed', String(alarmsEnabled));
+  btn.innerHTML = alarmsEnabled ? '&#9200; Alarms on' : '&#9200; Alarms off';
+}
+
+document.getElementById('alarmBtn').addEventListener('click', () => {
+  alarmsEnabled = !alarmsEnabled;
+  if(alarmsEnabled){
+    ensureAudioCtx(); // create/resume inside this click gesture so later playback isn't blocked
+    alert("Alarms are on. Heads up: like Reminders, they only fire while this page is open in a tab or installed app — not if Keke's phone is locked or the app is fully closed.");
+  } else if(currentAlarmSlot){
+    dismissAlarm();
+  }
+  updateAlarmBtn();
+  saveSchedule();
+});
+
+function ensureAudioCtx(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ audioCtx = null; }
+  }
+  if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume().catch(()=>{}); }
+  return audioCtx;
+}
+
+/* Three short beeps rather than a single tone — reads as "alarm", not
+   "notification blip". Pure oscillator, so no audio asset to ship/host. */
+function playAlarmBeep(){
+  const ctx = ensureAudioCtx();
+  if(!ctx) return;
+  const now = ctx.currentTime;
+  [0, 0.32, 0.64].forEach(offset => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, now + offset);
+    gain.gain.linearRampToValueAtTime(0.35, now + offset + 0.02);
+    gain.gain.linearRampToValueAtTime(0.0001, now + offset + 0.24);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now + offset);
+    osc.stop(now + offset + 0.26);
+  });
+}
+
+function startAlarmEffects(){
+  playAlarmBeep();
+  if(navigator.vibrate) navigator.vibrate([400,150,400,150,400]);
+  alarmSoundInterval = setInterval(() => {
+    playAlarmBeep();
+    if(navigator.vibrate) navigator.vibrate([400,150,400,150,400]);
+  }, 1700);
+}
+function stopAlarmEffects(){
+  if(alarmSoundInterval){ clearInterval(alarmSoundInterval); alarmSoundInterval = null; }
+  if(navigator.vibrate) navigator.vibrate(0);
+}
+
+function showAlarmOverlay(slot){
+  document.getElementById('alarmTime').textContent = slot.time;
+  document.getElementById('alarmLabel').textContent = slot.label;
+  document.getElementById('alarmDesc').textContent = slot.desc || '';
+  document.getElementById('alarmOverlay').classList.add('open');
+}
+function hideAlarmOverlay(){
+  document.getElementById('alarmOverlay').classList.remove('open');
+}
+
+function triggerAlarm(day, index, slot, key){
+  alarmedSlots.add(key);
+  currentAlarmSlot = { day, index, key };
+  showAlarmOverlay(slot);
+  startAlarmEffects();
+}
+
+function dismissAlarm(){
+  stopAlarmEffects();
+  hideAlarmOverlay();
+  currentAlarmSlot = null;
+}
+
+document.getElementById('alarmDismissBtn').addEventListener('click', dismissAlarm);
+document.getElementById('alarmSnoozeBtn').addEventListener('click', () => {
+  if(!currentAlarmSlot) return;
+  const { day, index, key } = currentAlarmSlot;
+  stopAlarmEffects();
+  hideAlarmOverlay();
+  currentAlarmSlot = null;
+  alarmedSlots.delete(key); // let checkAlarms ignore it in the meantime; we re-fire manually below
+  alarmedSlots.add(key + '-snoozed');
+  setTimeout(() => {
+    alarmedSlots.delete(key + '-snoozed');
+    if(!alarmsEnabled) return;
+    const s = schedule[day] && schedule[day].slots[index];
+    if(s) triggerAlarm(day, index, s, key);
+  }, 5 * 60 * 1000);
+});
+
+/* Polls once a minute (via the 20s interval below, which is frequent enough
+   to always land inside the target minute) and fires the moment a slot's
+   start time matches "now" exactly, rather than a lead-time window like
+   the quiet reminders above. Only one alarm shows at a time. */
+function checkAlarms(){
+  if(!alarmsEnabled || currentAlarmSlot) return;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  if(isWithinQuietHours(nowMin)) return;
+  const todaySlots = schedule[todayName] ? schedule[todayName].slots : [];
+  for(let i = 0; i < todaySlots.length; i++){
+    const s = todaySlots[i];
+    const t = s._time;
+    if(!t || t.startMin === null) continue;
+    const key = todayName + '-' + i;
+    if(alarmedSlots.has(key) || alarmedSlots.has(key + '-snoozed')) continue;
+    if(t.startMin === nowMin){
+      triggerAlarm(todayName, i, s, key);
+      break; // one at a time; the rest still get checked on the next poll
+    }
+  }
+}
+
 /* ---- past weeks history ---- */
 const settingsOverlay = document.getElementById('settingsOverlay');
-document.getElementById('settingsBtn').addEventListener('click', () => settingsOverlay.classList.add('open'));
-document.getElementById('settingsModalClose').addEventListener('click', () => settingsOverlay.classList.remove('open'));
-document.getElementById('settingsModalOk').addEventListener('click', () => settingsOverlay.classList.remove('open'));
-settingsOverlay.addEventListener('click', (e) => { if(e.target === settingsOverlay) settingsOverlay.classList.remove('open'); });
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  settingsOverlay.classList.add('open');
+  document.querySelectorAll('.view-toggle button[data-view]').forEach(b => b.classList.remove('active'));
+  document.getElementById('settingsBtn').classList.add('active');
+});
+function closeSettingsOverlay(){
+  settingsOverlay.classList.remove('open');
+  document.getElementById('settingsBtn').classList.remove('active');
+  document.querySelectorAll('.view-toggle button[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
+}
+document.getElementById('settingsModalClose').addEventListener('click', closeSettingsOverlay);
+document.getElementById('settingsModalOk').addEventListener('click', closeSettingsOverlay);
+settingsOverlay.addEventListener('click', (e) => { if(e.target === settingsOverlay) closeSettingsOverlay(); });
+
+document.getElementById('viewWeeklyReviewBtn').addEventListener('click', () => {
+  document.getElementById('weeklyReviewBtn').click();
+});
+document.getElementById('viewPastWeeksBtn').addEventListener('click', () => {
+  document.getElementById('historyBtn').click();
+});
 // History/export/import live inside Settings now — step out of the way once one of them is actually used.
-['historyBtn','exportBtn','importBtn'].forEach(id => {
-  document.getElementById(id).addEventListener('click', () => settingsOverlay.classList.remove('open'));
+['historyBtn','exportBtn','importBtn','weeklyReviewBtn','journalBtn'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => closeSettingsOverlay());
+});
+
+document.getElementById('weeklyReviewBtn').addEventListener('click', () => {
+  showTab('insights');
+  renderWeeklyReviewCard(true);
+  document.getElementById('weeklyReviewCard').scrollIntoView({behavior:'smooth', block:'start'});
 });
 
 const historyOverlay = document.getElementById('historyOverlay');
@@ -2631,6 +3929,181 @@ document.getElementById('historyModalClose').addEventListener('click', () => his
 document.getElementById('historyModalOk').addEventListener('click', () => historyOverlay.classList.remove('open'));
 historyOverlay.addEventListener('click', (e) => { if(e.target === historyOverlay) historyOverlay.classList.remove('open'); });
 
+/* ---- journal browsing: every dated entry, newest first ---- */
+function renderJournalOverlayBody(){
+  const body = document.getElementById('journalModalBody');
+  const dateKeys = Object.keys(journal).sort().reverse();
+  if(dateKeys.length === 0){
+    body.innerHTML = `<p>No journal entries yet — jot a note about today, or about any task, and it'll show up here.</p>`;
+    return;
+  }
+  body.innerHTML = dateKeys.map(dateKey => {
+    const entry = journal[dateKey];
+    const d = new Date(dateKey + 'T00:00:00');
+    const label = isNaN(d) ? dateKey : d.toLocaleDateString('en-US', {weekday:'long', month:'short', day:'numeric'});
+    const taskNotes = entry.tasks
+      ? Object.entries(entry.tasks).map(([taskLabel, text]) => `<div class="journal-task-note"><b>${taskLabel}:</b> ${text}</div>`).join('')
+      : '';
+    return `
+      <div class="history-row">
+        <div class="history-row-head"><span><b>${label}</b></span></div>
+        ${entry.note ? `<p class="journal-entry-note">${entry.note}</p>` : ''}
+        ${taskNotes}
+      </div>`;
+  }).join('');
+}
+const journalOverlay = document.getElementById('journalOverlay');
+document.getElementById('journalBtn').addEventListener('click', () => {
+  renderJournalOverlayBody();
+  journalOverlay.classList.add('open');
+});
+document.getElementById('journalModalClose').addEventListener('click', () => journalOverlay.classList.remove('open'));
+document.getElementById('journalModalOk').addEventListener('click', () => journalOverlay.classList.remove('open'));
+journalOverlay.addEventListener('click', (e) => { if(e.target === journalOverlay) journalOverlay.classList.remove('open'); });
+
+/* ---- search across all days ----
+   Scans every task's label/description and every day's note. Results jump
+   straight to the matching day and open the matching task for editing,
+   since "found it" should end in "there it is", not another lookup. */
+function performSearch(query){
+  const q = query.trim().toLowerCase();
+  if(!q) return [];
+  const results = [];
+  days.forEach(day => {
+    const note = schedule[day].note || '';
+    if(note.toLowerCase().includes(q)){
+      results.push({ day, kind:'note', text: note });
+    }
+    schedule[day].slots.forEach((slot, idx) => {
+      const hay = (slot.label + ' ' + (slot.desc || '')).toLowerCase();
+      if(hay.includes(q)){
+        results.push({ day, kind:'task', idx, label: slot.label, time: slot.time });
+      }
+    });
+  });
+  Object.entries(journal).forEach(([dateKey, entry]) => {
+    if(entry.note && entry.note.toLowerCase().includes(q)){
+      results.push({ kind:'journal', dateKey, text: entry.note });
+    }
+    if(entry.tasks){
+      Object.entries(entry.tasks).forEach(([label, text]) => {
+        if(text.toLowerCase().includes(q) || label.toLowerCase().includes(q)){
+          results.push({ kind:'journal-task', dateKey, label, text });
+        }
+      });
+    }
+  });
+  return results;
+}
+
+function renderSearchResults(query){
+  const container = document.getElementById('searchResults');
+  const results = performSearch(query);
+  if(!query.trim()){
+    container.innerHTML = `<div class="search-empty">Start typing to search every day's tasks, notes, and journal entries.</div>`;
+    return;
+  }
+  if(results.length === 0){
+    container.innerHTML = `<div class="search-empty">No matches for "${query}".</div>`;
+    return;
+  }
+  container.innerHTML = results.map((r, i) => {
+    if(r.kind === 'task'){
+      return `<div class="search-result" data-i="${i}">
+         <div><div class="search-result-label">${r.label}</div><div class="search-result-day">${r.day} · ${r.time}</div></div>
+         <span>&#8250;</span>
+       </div>`;
+    }
+    if(r.kind === 'note'){
+      return `<div class="search-result" data-i="${i}">
+         <div><div class="search-result-label">${r.text}</div><div class="search-result-day">${r.day} · note</div></div>
+         <span>&#8250;</span>
+       </div>`;
+    }
+    // journal / journal-task
+    const d = new Date(r.dateKey + 'T00:00:00');
+    const dateLabel = isNaN(d) ? r.dateKey : d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    const text = r.kind === 'journal-task' ? `${r.label}: ${r.text}` : r.text;
+    return `<div class="search-result" data-i="${i}">
+         <div><div class="search-result-label">${text}</div><div class="search-result-day">${dateLabel} · journal</div></div>
+         <span>&#8250;</span>
+       </div>`;
+  }).join('');
+  container.querySelectorAll('.search-result').forEach(el => {
+    el.addEventListener('click', () => {
+      const r = results[parseInt(el.dataset.i, 10)];
+      document.getElementById('searchOverlay').classList.remove('open');
+      if(r.kind === 'journal' || r.kind === 'journal-task'){
+        renderJournalOverlayBody();
+        document.getElementById('journalOverlay').classList.add('open');
+        return;
+      }
+      activeDay = r.day;
+      editingIndex = (r.kind === 'task') ? r.idx : null;
+      showTab('day');
+      renderAll();
+      document.getElementById('dayCard').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+}
+
+const searchOverlay = document.getElementById('searchOverlay');
+const searchInput = document.getElementById('searchInput');
+document.getElementById('searchOpenBtn').addEventListener('click', () => {
+  searchInput.value = '';
+  renderSearchResults('');
+  searchOverlay.classList.add('open');
+  setTimeout(() => searchInput.focus(), 50);
+});
+searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
+document.getElementById('searchModalClose').addEventListener('click', () => searchOverlay.classList.remove('open'));
+document.getElementById('searchModalOk').addEventListener('click', () => searchOverlay.classList.remove('open'));
+searchOverlay.addEventListener('click', (e) => { if(e.target === searchOverlay) searchOverlay.classList.remove('open'); });
+
+/* ---- share the current day as an image ----
+   Snapshots #dayCard with html2canvas, then uses the native share sheet on
+   phones (navigator.share with a file) or falls back to a plain download
+   on desktop/browsers that don't support file sharing. */
+document.getElementById('shareDayBtn').addEventListener('click', async () => {
+  if(typeof html2canvas === 'undefined'){
+    alert("Couldn't load the image tool — check your connection and try again.");
+    return;
+  }
+  const btn = document.getElementById('shareDayBtn');
+  const original = btn.innerHTML;
+  btn.innerHTML = '&#8987;';
+  btn.disabled = true;
+  const target = document.getElementById('dayCard');
+  target.classList.add('sharing-snapshot');
+  try{
+    const canvas = await html2canvas(target, {
+      backgroundColor: getComputedStyle(document.body).getPropertyValue('--plum').trim() || '#3a1f2c',
+      scale: 2,
+      useCORS: true
+    });
+    canvas.toBlob(async (blob) => {
+      const filename = `${activeDay.toLowerCase()}-plan.png`;
+      const file = new File([blob], filename, { type: 'image/png' });
+      if(navigator.share && navigator.canShare && navigator.canShare({ files:[file] })){
+        try{ await navigator.share({ files:[file], title: `${activeDay}'s plan` }); }
+        catch(e){ /* user cancelled share sheet — not an error */ }
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      }
+    }, 'image/png');
+  } catch(e){
+    alert("Couldn't create the image this time — please try again.");
+  } finally {
+    target.classList.remove('sharing-snapshot');
+    btn.innerHTML = original;
+    btn.disabled = false;
+  }
+});
+
 /* ---- backup export / import ---- */
 document.getElementById('exportBtn').addEventListener('click', () => {
   const cleanSchedule = {};
@@ -2640,7 +4113,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
       slots: schedule[day].slots.map(({ _time, ...rest }) => rest)
     };
   });
-  const data = JSON.stringify({ schedule: cleanSchedule, theme: currentThemeId, customAccent, reminders: remindersEnabled, reminderLeadMin, quietHoursEnabled, quietHoursStart, quietHoursEnd, weekHistory, slotHistory, dayHistory, dismissedInsights, weekKey: currentWeekKey }, null, 2);
+  const data = JSON.stringify({ schedule: cleanSchedule, theme: currentThemeId, customAccent, reminders: remindersEnabled, reminderLeadMin, alarmsEnabled, quietHoursEnabled, quietHoursStart, quietHoursEnd, weekHistory, slotHistory, dayHistory, dismissedInsights, moodLog, journal, weekKey: currentWeekKey }, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2672,8 +4145,13 @@ document.getElementById('importFileInput').addEventListener('change', (e) => {
         slotHistory = (parsed.slotHistory && typeof parsed.slotHistory === 'object') ? parsed.slotHistory : slotHistory;
         dayHistory = (parsed.dayHistory && typeof parsed.dayHistory === 'object') ? parsed.dayHistory : dayHistory;
         dismissedInsights = (parsed.dismissedInsights && typeof parsed.dismissedInsights === 'object') ? parsed.dismissedInsights : dismissedInsights;
+        weeklyReviewDismissed = (parsed.weeklyReviewDismissed && typeof parsed.weeklyReviewDismissed === 'object') ? parsed.weeklyReviewDismissed : weeklyReviewDismissed;
+        moodLog = (parsed.moodLog && typeof parsed.moodLog === 'object') ? parsed.moodLog : moodLog;
+        journal = (parsed.journal && typeof parsed.journal === 'object') ? parsed.journal : journal;
         reminderLeadMin = [0,5,10,15,30].includes(parsed.reminderLeadMin) ? parsed.reminderLeadMin : reminderLeadMin;
         document.getElementById('reminderLeadSelect').value = String(reminderLeadMin);
+        alarmsEnabled = typeof parsed.alarmsEnabled === 'boolean' ? parsed.alarmsEnabled : alarmsEnabled;
+        updateAlarmBtn();
         quietHoursEnabled = typeof parsed.quietHoursEnabled === 'boolean' ? parsed.quietHoursEnabled : quietHoursEnabled;
         quietHoursStart = typeof parsed.quietHoursStart === 'string' ? parsed.quietHoursStart : quietHoursStart;
         quietHoursEnd = typeof parsed.quietHoursEnd === 'string' ? parsed.quietHoursEnd : quietHoursEnd;
@@ -2710,6 +4188,7 @@ setInterval(() => {
   if(currentView === 'day' && editingIndex === null) renderDay();
 }, 60000);
 setInterval(checkReminders, 20000);
+setInterval(checkAlarms, 20000);
 
 /* ---- add to home screen ---- */
 function updateThemeColorMeta(theme){
